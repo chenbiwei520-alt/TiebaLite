@@ -24,8 +24,6 @@ import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.InfiniteRepeatableSpec
 import androidx.compose.animation.core.Transition
 import androidx.compose.animation.core.spring
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -33,6 +31,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.isSpecified
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.google.accompanist.placeholder.PlaceholderDefaults
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.google.accompanist.placeholder.fade
@@ -60,8 +60,10 @@ import com.google.accompanist.placeholder.shimmer
  */
 @Composable
 fun PlaceholderDefaults.color(
-    backgroundColor: Color = MaterialTheme.colorScheme.surface,
-    contentColor: Color = contentColorFor(backgroundColor),
+    // Miuix tokens rather than Material's, so the skeleton sits on the same neutral ramp as the
+    // cards in both light and dark themes.
+    backgroundColor: Color = MiuixTheme.colorScheme.background,
+    contentColor: Color = MiuixTheme.colorScheme.onBackground,
     contentAlpha: Float = 0.1f,
 ): Color = contentColor.copy(contentAlpha).compositeOver(backgroundColor)
 
@@ -75,8 +77,8 @@ fun PlaceholderDefaults.color(
  */
 @Composable
 fun PlaceholderDefaults.fadeHighlightColor(
-    backgroundColor: Color = MaterialTheme.colorScheme.surface,
-    alpha: Float = 0.3f,
+    backgroundColor: Color = MiuixTheme.colorScheme.background,
+    alpha: Float = 0.35f,
 ): Color = backgroundColor.copy(alpha = alpha)
 
 /**
@@ -89,8 +91,8 @@ fun PlaceholderDefaults.fadeHighlightColor(
  */
 @Composable
 fun PlaceholderDefaults.shimmerHighlightColor(
-    backgroundColor: Color = MaterialTheme.colorScheme.inverseSurface,
-    alpha: Float = 0.75f,
+    backgroundColor: Color = MiuixTheme.colorScheme.onBackgroundVariant,
+    alpha: Float = 0.4f,
 ): Color {
     return backgroundColor.copy(alpha = alpha)
 }
@@ -158,7 +160,7 @@ fun PlaceholderHighlight.Companion.shimmer(
  * @param color the color used to draw the placeholder UI. If [Color.Unspecified] is provided,
  * the placeholder will use [PlaceholderDefaults.color].
  * @param shape desired shape of the placeholder. If null is provided the placeholder
- * will use the small shape set in [MaterialTheme.shapes].
+ * will use the app's default squircle shape ([SquircleShape] with [Sizes.CornerRadius]).
  * @param highlight optional highlight animation.
  * @param placeholderFadeTransitionSpec The transition spec to use when fading the placeholder
  * on/off screen. The boolean parameter defined for the transition is [visible].
@@ -176,7 +178,7 @@ fun Modifier.placeholder(
     Modifier.placeholder(
         visible = visible,
         color = if (color.isSpecified) color else PlaceholderDefaults.color(),
-        shape = shape ?: MaterialTheme.shapes.small,
+        shape = shape ?: SquircleShape(Sizes.CornerRadius),
         highlight = highlight ?: PlaceholderHighlight.fade(),
         placeholderFadeTransitionSpec = placeholderFadeTransitionSpec,
         contentFadeTransitionSpec = contentFadeTransitionSpec,

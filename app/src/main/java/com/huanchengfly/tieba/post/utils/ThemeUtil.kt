@@ -19,13 +19,7 @@ import com.huanchengfly.tieba.post.theme.ColorSchemeDayNight
 import com.huanchengfly.tieba.post.theme.DefaultColors
 import com.huanchengfly.tieba.post.theme.DefaultDarkColors
 import com.huanchengfly.tieba.post.theme.ExtendedColorScheme
-import com.huanchengfly.tieba.post.theme.colorscheme.BlueColorScheme
-import com.huanchengfly.tieba.post.theme.colorscheme.GreenColorScheme
-import com.huanchengfly.tieba.post.theme.colorscheme.OrangeColorScheme
-import com.huanchengfly.tieba.post.theme.colorscheme.PinkColorScheme
-import com.huanchengfly.tieba.post.theme.colorscheme.PurpleColorScheme
-import com.huanchengfly.tieba.post.theme.colorscheme.dynamicColorScheme
-import com.huanchengfly.tieba.post.theme.colorscheme.monetColorScheme
+import com.huanchengfly.tieba.post.theme.colorscheme.HyperOsColorScheme
 import com.huanchengfly.tieba.post.theme.colorscheme.translucentColorScheme
 import com.huanchengfly.tieba.post.theme.createTopAppBarColors
 import com.huanchengfly.tieba.post.theme.isTranslucent
@@ -158,21 +152,9 @@ object ThemeUtil {
             when (it.theme) {
                 Theme.TRANSLUCENT -> translucentColorScheme(it.transColor, it.transDarkColorMode)
 
-                Theme.CUSTOM -> dynamicColorScheme(it.customColor!!.toArgb(), it.customVariant!!)
-
-                Theme.DYNAMIC -> {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                        monetColorScheme(context)
-                    } else {
-                        BlueColorScheme
-                    }
-                }
-
-                Theme.BLUE -> BlueColorScheme
-                Theme.GREEN -> GreenColorScheme
-                Theme.ORANGE -> OrangeColorScheme
-                Theme.PINK -> PinkColorScheme
-                Theme.PURPLE -> PurpleColorScheme
+                // The Miuix HyperOS palette is the single accent; legacy palette picks
+                // (kept for saved settings compatibility) all resolve to it
+                Theme.BLUE, Theme.GREEN, Theme.ORANGE, Theme.PINK, Theme.PURPLE -> HyperOsColorScheme
             }
         }
     }
@@ -207,16 +189,13 @@ object ThemeUtil {
     fun getExtendedColorFlow(settingsRepository: SettingsRepository, context: Context): Flow<ExtendedColorScheme> {
         return combine(
             flow = savedColorSchemeFlow(settingsRepository.themeSettings, context),
-            flow2 = settingsRepository.uiSettings.map { it.darkAmoled to it.reduceEffect }.distinctUntilChanged(),
-            flow3 = getDarkModeFlow(settingsRepository),
-            transform = { colorSchemeDayNight, (darkAmoled, reduceEffect), isDark ->
-                val colorScheme = colorSchemeDayNight.getColorScheme(isDark, darkAmoled)
+            flow2 = getDarkModeFlow(settingsRepository),
+            transform = { colorSchemeDayNight, isDark ->
+                val colorScheme = colorSchemeDayNight.getColorScheme(isDark)
                 when {
                     colorScheme.isTranslucent -> ExtendedColorScheme(colorScheme, isDark, navigationContainer = Color.Transparent)
 
-                    !reduceEffect -> createBlurColorScheme(colorScheme, isDark)
-
-                    else -> ExtendedColorScheme(colorScheme, isDark)
+                    else -> createBlurColorScheme(colorScheme, isDark)
                 }
                 .also { _colorState.value = it }
             }

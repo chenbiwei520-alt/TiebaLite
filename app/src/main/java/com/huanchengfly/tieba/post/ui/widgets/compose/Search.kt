@@ -1,61 +1,54 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Clear
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.onFocusEvent
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Rect
+import top.yukonga.miuix.kmp.basic.InputField
+import top.yukonga.miuix.kmp.basic.SearchBar
+import top.yukonga.miuix.kmp.basic.SearchBarDefaults
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.squircle.squircleClip
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.rememberSearchBarGlass
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.huanchengfly.tieba.post.LocalHabitSettings
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.activities.VideoViewActivity
 import com.huanchengfly.tieba.post.api.models.SearchThreadBean
 import com.huanchengfly.tieba.post.ui.models.search.SearchMedia
 import com.huanchengfly.tieba.post.ui.models.search.SearchThreadInfo
+import com.huanchengfly.tieba.post.ui.page.videoview.VideoViewer
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.MorphAnchor
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.VideoThumbnail
 import kotlin.math.min
 
@@ -83,8 +76,8 @@ fun QuotePostCard(
             mainPostContent = mainPostContent,
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(MaterialTheme.shapes.small)
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .squircleClip(SquircleCornerRadius.Small)
+                .background(MiuixTheme.colorScheme.surfaceContainer)
                 .clickable(onClick = onMainPostClick),
             medias = medias,
         )
@@ -164,8 +157,8 @@ fun SearchThreadItem(
             if (item.mainPostTitle != null) {
                 val cardModifier = Modifier
                     .fillMaxWidth()
-                    .clip(MaterialTheme.shapes.small)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .squircleClip(SquircleCornerRadius.Small)
+                    .background(MiuixTheme.colorScheme.surfaceContainer)
 
                 if (item.postInfoContent != null) {
                     QuotePostCard(
@@ -203,14 +196,31 @@ fun SearchThreadItem(
 @Composable
 private fun SearchVideo(modifier: Modifier = Modifier, video: SearchMedia.Video) {
     val context = LocalContext.current
+    val density = LocalDensity.current
+    // 容器形变的起点：这一格视频封面在窗口里的矩形。
+    var bounds by remember { mutableStateOf(Rect.Zero) }
     VideoThumbnail(
         modifier = modifier
             .fillMaxWidth(singleMediaFraction)
             .aspectRatio(ratio = 2.0f)
-            .clip(MaterialTheme.shapes.small),
+            .onGloballyPositioned { bounds = it.boundsInWindow() }
+            .squircleClip(SquircleCornerRadius.Small),
         thumbnailUrl = video.thumbnail,
         onClick = {
-            VideoViewActivity.launch(context, videoUrl = video.url, thumbnailUrl = video.thumbnail)
+            val opened = VideoViewer.open(
+                context = context,
+                videoUrl = video.url,
+                thumbnailUrl = video.thumbnail,
+                aspectRatio = 2.0f,
+                anchor = MorphAnchor(
+                    url = video.url,
+                    bounds = bounds,
+                    cornerRadiusPx = with(density) { 8.dp.toPx() },
+                    ratio = 2.0f,
+                    thumbUrl = video.thumbnail,
+                ),
+            )
+            if (!opened) VideoViewActivity.launch(context, videoUrl = video.url, thumbnailUrl = video.thumbnail)
         }
     )
 }
@@ -232,7 +242,7 @@ private fun SearchPhoto(modifier: Modifier = Modifier, pics: List<SearchMedia.Pi
             modifier = Modifier
                 .fillMaxWidth(mediaWidthFraction)
                 .aspectRatio(mediaAspectRatio)
-                .clip(MaterialTheme.shapes.small),
+                .squircleClip(SquircleCornerRadius.Small),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             for (i in 0 until min(picCount, MAX_PHOTO_IN_ROW)) {
@@ -256,101 +266,75 @@ private fun SearchPhoto(modifier: Modifier = Modifier, pics: List<SearchMedia.Pi
     }
 }
 
+/**
+ * The app's unified search field, built on Miuix [SearchBar] + [InputField].
+ *
+ * Two states, driven by Miuix itself: collapsed (the capsule with the label) and expanded (an
+ * active search session — the field is focused, the label gives way to the query, and the system
+ * back gesture collapses instead of leaving the page). The transition between them is Miuix's own
+ * animation; nothing custom is needed.
+ *
+ * `onBack` takes the leading slot (instead of the default magnifier), matching every other page's
+ * toolbar layout.
+ *
+ * With a non-null [backdrop] the capsule becomes glass — the shared
+ * [rememberSearchBarGlass] treatment, the same one the home page's entry uses — blurring the
+ * content that scrolls beneath it. Layout, focus/keyboard flow and callbacks are untouched: the
+ * blur is a draw-only modifier on the field and the capsule fill swap is exactly the
+ * `InputField.color` arrangement its doc prescribes. Null (no backdrop recorded, e.g. API < 33)
+ * keeps the flat capsule.
+ *
+ * @param backdrop the page-content [LayerBackdrop] behind the bar, or null for the flat capsule.
+ */
 @Composable
-fun SearchBox(
+fun MiuixSearchTopBar(
     keyword: String,
     onKeywordChange: (String) -> Unit,
-    modifier: Modifier = Modifier,
     onKeywordSubmit: (String) -> Unit = {},
-    placeholder: @Composable () -> Unit = {},
-    prependIcon: @Composable RowScope.() -> Unit = {},
-    appendIcon: (@Composable RowScope.() -> Unit)? = null,
-    focusRequester: FocusRequester = remember { FocusRequester() },
+    onBack: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    label: String = stringResource(id = R.string.hint_search),
+    backdrop: LayerBackdrop? = null,
 ) {
-    var launchFocused by rememberSaveable { mutableStateOf(false) }
-    val isKeywordNotEmpty = remember(keyword) { keyword.isNotEmpty() }
-    val keyboardController = LocalSoftwareKeyboardController.current
+    // SearchBar treats `expanded` as "search session active": its InputField clears the query and
+    // drops focus whenever expanded goes false while focused, so this must track real focus rather
+    // than being pinned to false. Focusing the field flips it on via onExpandedChange.
+    var expanded by remember { mutableStateOf(false) }
+    val glass = rememberSearchBarGlass(backdrop)
 
-    val focusManager = LocalFocusManager.current
-    var isFocused by remember { mutableStateOf(false) }
-
-    Surface(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.small,
-        tonalElevation = 6.dp
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            prependIcon.invoke(this)
-            BaseTextField(
-                value = keyword,
-                onValueChange = onKeywordChange,
-                textStyle = MaterialTheme.typography.bodyMedium,
-                placeholder = placeholder,
-                keyboardOptions = KeyboardOptions(
-                    imeAction = ImeAction.Search,
-                ),
-                keyboardActions = KeyboardActions(
-                    onSearch = {
-                        focusManager.clearFocus()
-                        if (isKeywordNotEmpty) onKeywordSubmit(keyword)
-                    }
-                ),
-                singleLine = true,
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1f)
-                    .focusRequester(focusRequester)
-                    .onFocusEvent {
-                        isFocused = it.hasFocus
-                        if (!isFocused) keyboardController?.hide()
-                    },
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent
-                ),
+    SearchBar(
+        inputField = {
+            InputField(
+                query = keyword,
+                onQueryChange = onKeywordChange,
+                onSearch = onKeywordSubmit,
+                expanded = expanded,
+                onExpandedChange = { expanded = it },
+                label = label,
+                modifier = glass.modifier,
+                color = glass.capsuleColor,
+                leadingIcon = {
+                    Icon(
+                        modifier = Modifier
+                            .padding(
+                                start = SearchBarDefaults.LeadingIconStartPadding,
+                                end = SearchBarDefaults.LeadingIconEndPadding,
+                            )
+                            .clip(CircleShape)
+                            .clickable(onClick = onBack),
+                        imageVector = MiuixIcons.Back,
+                        tint = MiuixTheme.colorScheme.onSurfaceContainerHigh,
+                        contentDescription = stringResource(id = R.string.button_back),
+                    )
+                },
             )
-
-            appendIcon?.invoke(this)
-
-            AnimatedVisibility(visible = isKeywordNotEmpty && isFocused) {
-                Icon(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .clickable { onKeywordChange("") },
-                    imageVector = Icons.Rounded.Clear,
-                    contentDescription = stringResource(id = R.string.button_clear)
-                )
-            }
-
-            AnimatedVisibility(visible = isKeywordNotEmpty) {
-                Icon(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .clickable { onKeywordSubmit(keyword) },
-                    imageVector = Icons.Rounded.Search,
-                    contentDescription = stringResource(id = R.string.button_search)
-                )
-            }
-        }
-    }
-
-    if (!launchFocused) { // Focus & Show keyboard at fist launch
-        LaunchedEffect(Unit) {
-            focusRequester.requestFocus()
-            launchFocused = true
-        }
-    }
-
-    val isKeyboardOpen by with(LocalDensity.current) {
-         rememberUpdatedState(WindowInsets.ime.getBottom(this) > 0)
-    }
-
-    BackHandler(enabled = isKeyboardOpen) {
-        focusManager.clearFocus(force = true)
-        keyboardController?.hide()
+        },
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        // The page renders suggestions and results in its own body, so the bar's expanded slot
+        // stays empty: expanding only switches the field into an editing session.
     }
 }
+

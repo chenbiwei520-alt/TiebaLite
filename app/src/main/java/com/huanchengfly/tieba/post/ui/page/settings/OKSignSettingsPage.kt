@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BatteryAlert
 import androidx.compose.material.icons.outlined.BrowseGallery
+import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.OfflinePin
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.WatchLater
@@ -46,7 +47,7 @@ private fun batteryOptimizeState(): State<Boolean> {
 }
 
 private fun SegmentedPrefsScope.batteryOpPreference(modifier: Modifier = Modifier, enabled: Boolean) {
-    customPreference { shapes ->
+    customPreference { position ->
         val context = LocalContext.current
         val coroutineScope = rememberCoroutineScope()
         val snackbarHostState = LocalSnackbarHostState.current
@@ -63,7 +64,7 @@ private fun SegmentedPrefsScope.batteryOpPreference(modifier: Modifier = Modifie
 
             SegmentedPreference(
                 title = R.string.title_ignore_battery_optimization,
-                shapes = shapes,
+                position = position,
                 summary = if (enabled) {
                     R.string.summary_ignore_battery_optimization
                 } else {
@@ -87,12 +88,18 @@ private fun SegmentedPrefsScope.batteryOpPreference(modifier: Modifier = Modifie
 }
 
 @Composable
-fun OKSignSettingsPage(settings: Settings<SignConfig>, onBack: () -> Unit) {
+fun OKSignSettingsPage(
+    settings: Settings<SignConfig>,
+    onBack: () -> Unit,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
+) {
     val batteryOpEnabled by batteryOptimizeState()
 
     SettingsScaffold(
         titleRes = R.string.title_oksign,
         onBack = onBack,
+        paneMode = paneMode,
         settings = settings,
         initialValue = SignConfig(),
     ) {
@@ -147,6 +154,15 @@ fun OKSignSettingsPage(settings: Settings<SignConfig>, onBack: () -> Unit) {
                 summary = R.string.summary_oksign_use_official_oksign,
                 leadingIcon = Icons.Outlined.Speed,
                 enabled = okSignAvailable
+            )
+
+            // Not gated on the auto-sign switch: the manual one-tap sign (tile / settings entry) runs
+            // the same worker and honours this too.
+            toggleablePreference(
+                property = SignConfig::failAutoStop,
+                title = R.string.title_oksign_fail_auto_stop,
+                summary = R.string.summary_oksign_fail_auto_stop,
+                leadingIcon = Icons.Outlined.Cancel,
             )
         }
     }

@@ -18,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -30,7 +29,9 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.Error
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorCode
 import com.huanchengfly.tieba.post.navigateDebounced
+import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.ui.widgets.compose.BasicPbContentText
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
 import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.LocalNavController
 import com.huanchengfly.tieba.post.ui.page.main.notifications.list.NotificationsListViewModel.Companion.NotificationsListVmFactory
@@ -44,6 +45,8 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.defaultBottomIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.DateTimeUtils
 import com.huanchengfly.tieba.post.utils.LocalAccount
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.squircle.squircleClip
 import java.util.Objects
 
 @Composable
@@ -124,7 +127,10 @@ private fun NotificationsListContent(
         SwipeUpLazyLoadColumn(
             modifier = modifier.fillMaxSize(),
             state = listState,
-            contentPadding = contentPadding,
+            // Card items need breathing room of their own: the scaffold padding only reserves the
+            // bar's height, so the first card would otherwise touch the tab row.
+            contentPadding = contentPadding + PaddingValues(top = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             isLoading = isLoadingMore,
             onLazyLoad = onLoadMore.takeIf { uiState.hasMore },
             bottomIndicator = defaultBottomIndicator,
@@ -135,69 +141,80 @@ private fun NotificationsListContent(
                     blockedTip = blockedTip,
                     hideBlockedContent = hideBlocked
                 ) {
-                    Column(
+                    // Same Miuix card surface the feed items use. The outer 16dp supplies the gutter
+                    // while the inner padding below keeps the content at a FeedCard's inset.
+                    Card(
                         modifier = Modifier
-                            .clickable {
-                                val route = if (info.isFloor) {
-                                    Destination.SubPosts(
-                                        threadId = info.threadId,
-                                        //quotePid引用不确定，可能为postId，也可能未subPostId,导致子楼加载失败或者子回复异常
-                                        //先传0，在子楼页面获取正确的postId
-                                        postId = 0,
-                                        subPostId = info.postId,
-                                        isSheet = false,
-                                    )
-                                } else {
-                                    Destination.Thread(threadId = info.threadId, postId = info.postId)
-                                }
-                                navigator.navigateDebounced(route)
-                            }
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
                     ) {
-                        UserHeader(
-                            name = info.replyUser.nameShow,
-                            avatar = info.replyUser.avatarUrl,
-                            onClick = {
-                                navigator.navigateDebounced(Destination.UserProfile(info.replyUser.id))
-                            },
-                            desc = remember { DateTimeUtils.getRelativeTimeString(context, info.time) }
-                        )
-
-                        if (info.content != null) {
-                            BasicPbContentText(text = info.content)
-                        }
-
-                        val quoteText = if (type == NotificationsType.ReplyMe && info.isFloor) {
-                            info.quoteContent
-                        } else {
-                            info.title
-                        }
-                        if (quoteText.isNullOrEmpty()) return@Column
-
-                        BasicPbContentText(
-                            text = quoteText,
+                        Column(
                             modifier = Modifier
+                                // Card's inner Column hands children minWidth = 0, so the content
+                                // has to fill explicitly or it collapses to its intrinsic width.
                                 .fillMaxWidth()
-                                .clip(MaterialTheme.shapes.small)
                                 .clickable {
                                     val route = if (info.isFloor) {
                                         Destination.SubPosts(
                                             threadId = info.threadId,
-                                            postId = info.quotePid ?: 0,
+                                            //quotePid引用不确定，可能为postId，也可能未subPostId,导致子楼加载失败或者子回复异常
+                                            //先传0，在子楼页面获取正确的postId
+                                            postId = 0,
                                             subPostId = info.postId,
                                             isSheet = false,
                                         )
                                     } else {
-                                        Destination.Thread(info.threadId)
+                                        Destination.Thread(threadId = info.threadId, postId = info.postId)
                                     }
                                     navigator.navigateDebounced(route)
                                 }
-                                .background(MaterialTheme.colorScheme.secondaryContainer)
-                                .padding(8.dp),
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            fontSize = 12.sp,
-                        )
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            UserHeader(
+                                name = info.replyUser.nameShow,
+                                avatar = info.replyUser.avatarUrl,
+                                onClick = {
+                                    navigator.navigateDebounced(Destination.UserProfile(info.replyUser.id))
+                                },
+                                desc = remember { DateTimeUtils.getRelativeTimeString(context, info.time) }
+                            )
+
+                            if (info.content != null) {
+                                BasicPbContentText(text = info.content)
+                            }
+
+                            val quoteText = if (type == NotificationsType.ReplyMe && info.isFloor) {
+                                info.quoteContent
+                            } else {
+                                info.title
+                            }
+                            if (quoteText.isNullOrEmpty()) return@Column
+
+                            BasicPbContentText(
+                                text = quoteText,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .squircleClip(SquircleCornerRadius.Small)
+                                    .clickable {
+                                        val route = if (info.isFloor) {
+                                            Destination.SubPosts(
+                                                threadId = info.threadId,
+                                                postId = info.quotePid ?: 0,
+                                                subPostId = info.postId,
+                                                isSheet = false,
+                                            )
+                                        } else {
+                                            Destination.Thread(info.threadId)
+                                        }
+                                        navigator.navigateDebounced(route)
+                                    }
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    .padding(8.dp),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                fontSize = 12.sp,
+                            )
+                        }
                     }
                 }
             }

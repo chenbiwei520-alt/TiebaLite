@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +12,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.theme.ProvideContentColorTextStyle
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import top.yukonga.miuix.kmp.squircle.squircleBackground
 
 @Composable
 fun BlockTip(
@@ -22,7 +23,7 @@ fun BlockTip(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.shapes.extraSmall)
+            .squircleBackground(MaterialTheme.colorScheme.surfaceContainerHighest, SquircleCornerRadius.ExtraSmall)
             .padding(vertical = 8.dp, horizontal = 16.dp)
     ) {
         ProvideContentColorTextStyle(

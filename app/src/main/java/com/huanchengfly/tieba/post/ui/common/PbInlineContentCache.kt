@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Link
-import androidx.compose.material.icons.rounded.Report
 import androidx.compose.material.icons.rounded.SlowMotionVideo
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +30,9 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.PbContentText
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberChipInlineContent
 import com.huanchengfly.tieba.post.utils.EmoticonManager
 import com.huanchengfly.tieba.post.utils.EmoticonUtil
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Link
+import top.yukonga.miuix.kmp.icon.extended.Report
 
 val LocalPbInlineContentCache = staticCompositionLocalOf<PbInlineContentCache> { error("No PbInlineContentCache provided!") }
 
@@ -105,7 +106,7 @@ class PbInlineContentCache private constructor(
             return mapOf(
                 PbInlineType.LINK.name to InlineTextContent(placeholder = placeholder) {
                     Icon(
-                        imageVector = Icons.Rounded.Link,
+                        imageVector = MiuixIcons.Link,
                         contentDescription = stringResource(id = R.string.link),
                         modifier = Modifier.size(sizeDp),
                         tint = MaterialTheme.colorScheme.primaryContainer,
@@ -113,7 +114,7 @@ class PbInlineContentCache private constructor(
                 },
                 PbInlineType.LINK_MALICIOUS.name to InlineTextContent(placeholder = placeholder) {
                     Icon(
-                        imageVector = Icons.Rounded.Report,
+                        imageVector = MiuixIcons.Report,
                         contentDescription = stringResource(id = R.string.link),
                         modifier = Modifier.size(sizeDp),
                         tint = RedA700,

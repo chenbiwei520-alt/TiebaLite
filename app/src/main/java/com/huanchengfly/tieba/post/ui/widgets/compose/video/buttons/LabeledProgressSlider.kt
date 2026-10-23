@@ -18,14 +18,14 @@
 
 package com.huanchengfly.tieba.post.ui.widgets.compose.video.buttons
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.Interaction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import top.yukonga.miuix.kmp.squircle.squircleBackground
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -149,10 +149,11 @@ private fun SeekTimeThumb(
     Text(
       text = Util.getStringForTime(progressState.progressToPosition(sliderState.value)),
       modifier =
-        Modifier.background(
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
-            RoundedCornerShape(8.dp),
-          )
+        Modifier
+          .squircleBackground(
+              MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+              cornerRadius = SquircleCornerRadius.Small,
+            )
           .padding(horizontal = 8.dp, vertical = 4.dp),
       color = MaterialTheme.colorScheme.primary,
       style = MaterialTheme.typography.bodySmall,

@@ -1,6 +1,7 @@
 package com.huanchengfly.tieba.post.ui.common.windowsizeclass
 
 import android.app.Activity
+import android.content.res.Configuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.platform.LocalConfiguration
@@ -22,6 +23,18 @@ fun calculateWindowSizeClass(activity: Activity): WindowSizeClass {
     val metrics = WindowMetricsCalculator.getOrCreate().computeCurrentWindowMetrics(activity)
     return WindowSizeClass.BREAKPOINTS_V1.computeWindowSizeClass(metrics)
 }
+
+/**
+ * Current orientation, observed through Compose.
+ *
+ * [LocalConfiguration] is republished on every configuration change, so reading it from a
+ * @Composable recomposes on rotation without the activity restarting — the same reason
+ * [calculateWindowSizeClass] reads it instead of using `Activity#onConfigurationChanged`.
+ */
+@ReadOnlyComposable
+@Composable
+fun isWindowLandscape(): Boolean =
+    LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
 @ReadOnlyComposable
 @Composable

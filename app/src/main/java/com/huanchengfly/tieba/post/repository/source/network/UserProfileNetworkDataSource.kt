@@ -5,6 +5,7 @@ import com.huanchengfly.tieba.post.api.TiebaApi
 import com.huanchengfly.tieba.post.api.models.CommonResponse
 import com.huanchengfly.tieba.post.api.models.FollowBean
 import com.huanchengfly.tieba.post.api.models.FollowListBean
+import com.huanchengfly.tieba.post.api.models.FansListBean
 import com.huanchengfly.tieba.post.api.models.InitNickNameBean
 import com.huanchengfly.tieba.post.api.models.LoginBean
 import com.huanchengfly.tieba.post.api.models.PermissionListBean
@@ -72,6 +73,18 @@ object UserProfileNetworkDataSource {
 
         return TiebaApi.getInstance()
             .followListFlow(page, uid)
+            .firstOrThrow()
+            .apply {
+                if (errorCode != 0) throw TiebaApiException(CommonResponse(errorCode, errorMsg.orEmpty()))
+            }
+    }
+
+    suspend fun loadFansList(uid: Long, page: Int): FansListBean {
+        require(uid > 0) { "Invalid user ID: $uid." }
+        require(page > 0) { "Invalid page: $page" }
+
+        return TiebaApi.getInstance()
+            .fansListFlow(page, uid)
             .firstOrThrow()
             .apply {
                 if (errorCode != 0) throw TiebaApiException(CommonResponse(errorCode, errorMsg.orEmpty()))

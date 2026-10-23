@@ -101,6 +101,9 @@ sealed interface Destination {
     @Serializable
     data class UserFollowList(val uid: Long): Destination
 
+    @Serializable
+    data class UserFansList(val uid: Long): Destination
+
     /**
      * @param uid 用户ID
      * @param avatar 用户头像Url
@@ -108,6 +111,7 @@ sealed interface Destination {
      * @param username 用户名
      * @param transitionKey 过渡动画额外标识键. 确保推荐页, 搜索页中包含多个相同用户时过渡动画的唯一性
      * @param recordHistory 记录访问历史
+     * @param showPostsTab 打开时直接定位到回贴 Tab (仅自己的主页有回贴 Tab)
      * */
     @Serializable
     data class UserProfile(
@@ -117,6 +121,7 @@ sealed interface Destination {
         val username: String? = null,
         val transitionKey: String? = null,
         val recordHistory: Boolean = true,
+        val showPostsTab: Boolean = false,
     ): Destination {
 
         constructor(user: Author, transitionKey: String? = null, recordHistory: Boolean = true): this(

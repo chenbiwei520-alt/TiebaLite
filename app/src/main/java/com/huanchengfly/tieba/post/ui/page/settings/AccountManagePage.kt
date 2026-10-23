@@ -6,7 +6,6 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.SupervisedUserCircle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,6 +38,8 @@ import com.huanchengfly.tieba.post.utils.TiebaUtil
 import com.huanchengfly.tieba.post.utils.launchUrl
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Edit
 
 @Composable
 private fun Flow<List<Account>>.collectLabelOptionsAsState(): State<StringLabelOptions<Long>> {
@@ -54,7 +55,9 @@ private fun Flow<List<Account>>.collectLabelOptionsAsState(): State<StringLabelO
 @Composable
 fun AccountManagePage(
     myLittleTailSettings: Settings<String>,
-    navigator: NavController
+    navigator: NavController,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
 ) {
     val context = LocalContext.current
     val accountUtil = remember { AccountUtil.getInstance() }
@@ -64,7 +67,8 @@ fun AccountManagePage(
 
     SettingsScaffold(
         titleRes = R.string.title_account_manage,
-        onBack = navigator::navigateUp
+        onBack = navigator::navigateUp,
+        paneMode = paneMode,
     ) {
         group(verticalPadding = 16.dp) {
             if (accounts.size > 1) {
@@ -89,11 +93,11 @@ fun AccountManagePage(
                 leadingIcon = Icons.Outlined.AddCircleOutline,
             )
 
-            customPreference { shapes ->
+            customPreference { position ->
                 val logoutDialogState = rememberDialogState()
                 SegmentedPreference(
                     title = R.string.title_exit_account,
-                    shapes = shapes,
+                    position = position,
                     onClick = logoutDialogState::show,
                     leadingIcon = Icons.AutoMirrored.Outlined.Logout
                 )
@@ -138,15 +142,15 @@ fun AccountManagePage(
                 leadingIcon = Icons.Outlined.ContentCopy,
             )
 
-            customPreference(key = R.string.title_my_tail) { shapes ->
+            customPreference(key = R.string.title_my_tail) { position ->
                 val dialogState = rememberDialogState()
                 val myLittleTail by myLittleTailSettings.collectAsStateWithLifecycle(initialValue = "")
 
                 SegmentedPreference(
                     title = stringResource(id = R.string.title_my_tail),
                     summary = myLittleTail.ifEmpty { stringResource(R.string.tip_no_little_tail) },
-                    shapes = shapes,
-                    leadingIcon = Icons.Outlined.Edit,
+                    position = position,
+                    leadingIcon = MiuixIcons.Light.Edit,
                     onClick = dialogState::show
                 )
 

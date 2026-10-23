@@ -12,12 +12,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -25,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -38,7 +37,6 @@ import androidx.navigation.NavController
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.topicList.NewTopicList
 import com.huanchengfly.tieba.post.arch.collectCommonUiEventWithLifecycle
-import com.huanchengfly.tieba.post.arch.isOverlapping
 import com.huanchengfly.tieba.post.navigateDebounced
 import com.huanchengfly.tieba.post.theme.Grey300
 import com.huanchengfly.tieba.post.theme.OrangeA700
@@ -49,17 +47,22 @@ import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.main.explore.hot.TopicTag
 import com.huanchengfly.tieba.post.ui.utils.rememberScrollOrientationConnection
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.BlurScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.CenterAlignedTopAppBar
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
+import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBarPaged
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultBackToTopFAB
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.NetworkImage
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.squircle.squircleClip
 
 @Composable
 private fun TopicImage(
@@ -70,12 +73,12 @@ private fun TopicImage(
         Modifier
             .fillMaxWidth()
             .aspectRatio(2.39f)
-            .clip(MaterialTheme.shapes.medium)
+            .squircleClip(SquircleCornerRadius.Medium)
     } else {
         Modifier
             .size(Sizes.Medium)
             .aspectRatio(1f)
-            .clip(MaterialTheme.shapes.extraSmall)
+            .squircleClip(SquircleCornerRadius.ExtraSmall)
     }
     Box(
         modifier = boxModifier
@@ -147,7 +150,6 @@ private fun HotTopicList(
     onTopicClicked: (NewTopicList) -> Unit = {},
     navigateUp: () -> Unit = {},
 ) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val coroutineScope = rememberCoroutineScope()
 
     StateScreen(
@@ -158,18 +160,24 @@ private fun HotTopicList(
     ) {
         val lazyListState = rememberLazyListState()
         val scrollOrientationConnection = rememberScrollOrientationConnection()
+        val barBackdrop = rememberMiuixBarBackdrop()
 
-        BlurScaffold(
-            topHazeBlock = {
-                blurEnabled = scrollBehavior.isOverlapping
-            },
+        MyScaffold(
             topBar = {
-                CenterAlignedTopAppBar(
-                    titleRes = R.string.title_hot_message_list,
+                TopAppBarPaged(
+                    title = {
+                        Text(text = stringResource(id = R.string.title_hot_message_list))
+                    },
+                    titleHorizontalAlignment = Alignment.CenterHorizontally,
                     navigationIcon = {
                         BackNavigationIcon(onBackPressed = navigateUp)
                     },
-                    scrollBehavior = scrollBehavior
+                    // Counterweight matching the back button so the centered title stays on the
+                    // true screen center
+                    actions = {
+                        Spacer(modifier = Modifier.width(48.dp))
+                    },
+                    backdrop = barBackdrop,
                 )
             },
             floatingActionButton = {
@@ -179,11 +187,17 @@ private fun HotTopicList(
                 DefaultBackToTopFAB(visible = fabVisible) {
                     coroutineScope.launch {
                         lazyListState.animateScrollToItem(0)
-                        scrollBehavior.state.contentOffset = 0f
                     }
                 }
             },
         ) { contentPaddings ->
+            // FULL-WIDTH blur capture — same rule as `ThreadPage`/`ExplorePage`. `Container` narrows
+            // its child to a centred column on wide screens (75% once the window is expanded, i.e.
+            // any landscape phone), while the app bar's progressive-blur band spans the whole screen
+            // width; a capture attached inside `Container` would be narrower than the band and
+            // `progressiveTextureBlur`'s shader would clamp out-of-bounds samples to the capture's
+            // edge, smearing the column's edge colour across the margins as flat slabs.
+            Box(modifier = Modifier.fillMaxWidth().miuixLayerBackdrop(barBackdrop)) {
             Container {
                 PullToRefreshBox(
                     modifier = Modifier
@@ -194,9 +208,7 @@ private fun HotTopicList(
                     contentPadding = contentPaddings,
                 ) {
                     MyLazyColumn(
-                        modifier = Modifier
-                            .nestedScroll(connection = scrollOrientationConnection)
-                            .nestedScroll(scrollBehavior.nestedScrollConnection),
+                        modifier = Modifier.nestedScroll(connection = scrollOrientationConnection),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         contentPadding = contentPaddings,
                     ) {
@@ -210,31 +222,38 @@ private fun HotTopicList(
                         ) { index, item ->
                             val topicClickedListener: () -> Unit = { onTopicClicked(item) }
 
-                            if (index < 3) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(onClick = topicClickedListener),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    TopicImage(index = index, imageUri = item.topic_image)
-                                    TopicBody(index = index, item = item)
-                                }
-                            } else {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(onClick = topicClickedListener),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    TopicImage(index = index, imageUri = item.topic_image)
-                                    TopicBody(index = index, item = item)
+                            // Each topic gets the same Miuix card surface the feed uses, so the topic
+                            // ranking reads as one visual family with the rest of the app.
+                            Card(modifier = Modifier.fillMaxWidth()) {
+                                if (index < 3) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(onClick = topicClickedListener)
+                                            .padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        TopicImage(index = index, imageUri = item.topic_image)
+                                        TopicBody(index = index, item = item)
+                                    }
+                                } else {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(onClick = topicClickedListener)
+                                            .padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        TopicImage(index = index, imageUri = item.topic_image)
+                                        TopicBody(index = index, item = item)
+                                    }
                                 }
                             }
                         }
                     }
                 }
+            }
             }
         }
     }

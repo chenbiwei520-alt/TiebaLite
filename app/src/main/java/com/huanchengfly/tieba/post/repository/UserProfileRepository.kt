@@ -6,6 +6,7 @@ import com.huanchengfly.tieba.post.App.Companion.AppBackgroundScope
 import com.huanchengfly.tieba.post.api.booleanToInt
 import com.huanchengfly.tieba.post.api.models.FollowBean
 import com.huanchengfly.tieba.post.api.models.FollowListBean
+import com.huanchengfly.tieba.post.api.models.FansListBean
 import com.huanchengfly.tieba.post.api.models.PermissionListBean
 import com.huanchengfly.tieba.post.api.models.protos.Anti
 import com.huanchengfly.tieba.post.api.models.protos.PostInfoList
@@ -129,6 +130,14 @@ class UserProfileRepository @Inject constructor(
         val result = networkDataSource.loadUserFollowList(uid, page)
         val cost = System.currentTimeMillis() - start
         Log.i(TAG, "onloadUserFollowList: Done, cost ${cost}ms for page $page, size: ${result.followList.size}")
+        return result
+    }
+
+    suspend fun loadFansList(uid: Long, page: Int = 1): FansListBean {
+        val start = System.currentTimeMillis()
+        val result = networkDataSource.loadFansList(uid, page)
+        val cost = System.currentTimeMillis() - start
+        Log.i(TAG, "onloadFansList: Done, cost ${cost}ms for page $page, size: ${result.userList.size}")
         return result
     }
 

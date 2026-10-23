@@ -46,20 +46,31 @@ enum class VerticalGesture {
  */
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-fun rememberPlayerGestureState(player: Player?): PlayerGestureState {
+fun rememberPlayerGestureState(
+    player: Player?,
+    /**
+     * 是否随控件显隐切换系统栏。只在播放器独占一个窗口时打开（[activities.VideoViewActivity]）；
+     * 主窗口里的视频叠层必须关掉：hide/show 系统栏会改 WindowInsets，下层每个页面的顶部内缩
+     * 都读它，关掉视频时列表会整体跳动正好一个状态栏高度。
+     */
+    hideSystemBars: Boolean = true,
+): PlayerGestureState {
     val coroutineScope = rememberCoroutineScope()
     val state = remember(player, coroutineScope) {
         PlayerGestureState(player, coroutineScope)
     }
 
     LaunchedEffect(player) { state.observe() }
-    LaunchedVideoWindowEffect(gestureState = state)
+    LaunchedVideoWindowEffect(gestureState = state, hideSystemBars = hideSystemBars)
     return state
 }
 
 @Composable
 @NonRestartableComposable
-private fun LaunchedVideoWindowEffect(gestureState: PlayerGestureState) {
+private fun LaunchedVideoWindowEffect(
+    gestureState: PlayerGestureState,
+    hideSystemBars: Boolean,
+) {
     val context = LocalContext.current
     val (insetsController, window) = remember(context) {
         val activity = context.findActivity() ?: throw NullPointerException("Activity not found!")
@@ -68,7 +79,8 @@ private fun LaunchedVideoWindowEffect(gestureState: PlayerGestureState) {
         } to activity.window
     }
 
-    LaunchedEffect(gestureState.controlsVisible) {
+    LaunchedEffect(gestureState.controlsVisible, hideSystemBars) {
+        if (!hideSystemBars) return@LaunchedEffect
         if (gestureState.controlsVisible) {
             insetsController.show(WindowInsetsCompat.Type.systemBars())
         } else {

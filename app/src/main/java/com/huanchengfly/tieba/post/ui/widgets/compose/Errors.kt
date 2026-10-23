@@ -38,6 +38,7 @@ import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
 import com.huanchengfly.tieba.post.theme.ProvideContentColorTextStyle
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onCase
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.isWindowHeightCompact
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.isWindowWidthCompact
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreenScope
 import com.huanchengfly.tieba.post.utils.SofireException
@@ -51,7 +52,6 @@ fun TipScreen(
     message: (@Composable () -> Unit)? = null,
     actions: (@Composable () -> Unit)? = null,
 ) {
-    val typography = MaterialTheme.typography
     val widthFraction = if (isWindowWidthCompact() || isWindowHeightCompact()) 0.9f else 0.5f
 
     Column(
@@ -66,16 +66,17 @@ fun TipScreen(
         Box(modifier = Modifier.requiredWidthIn(max = 400.dp)) {
             image()
         }
+        // MIUI type ramp: title2 for the headline, body2 dimmed for the supporting line.
         ProvideContentColorTextStyle(
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            textStyle = typography.titleLarge,
+            contentColor = MiuixTheme.colorScheme.onBackground,
+            textStyle = MiuixTheme.textStyles.title2,
             content = title
         )
 
         if (message != null) {
             ProvideContentColorTextStyle(
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                textStyle = typography.bodyLarge,
+                contentColor = MiuixTheme.colorScheme.onBackgroundVariant,
+                textStyle = MiuixTheme.textStyles.body2,
                 content = message
             )
         }

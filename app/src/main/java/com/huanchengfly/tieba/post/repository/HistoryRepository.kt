@@ -15,6 +15,7 @@ import com.huanchengfly.tieba.post.models.database.UserProfile
 import com.huanchengfly.tieba.post.models.database.dao.ForumHistoryDao
 import com.huanchengfly.tieba.post.models.database.dao.ThreadHistoryDao
 import com.huanchengfly.tieba.post.models.database.dao.UserProfileDao
+import com.huanchengfly.tieba.post.repository.user.SettingsRepository
 import com.huanchengfly.tieba.post.utils.StringUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -30,7 +31,8 @@ import javax.inject.Singleton
  * */
 @Singleton
 class HistoryRepository @Inject constructor(
-    private val dataBase: TbLiteDatabase
+    private val dataBase: TbLiteDatabase,
+    private val settingsRepository: SettingsRepository,
 ) {
 
     private val threadHistoryDao: ThreadHistoryDao = dataBase.threadHistoryDao()
@@ -70,6 +72,11 @@ class HistoryRepository @Inject constructor(
     }
 
     suspend fun saveHistory(history: History) {
+        // 无痕浏览：不再写入新的浏览记录。读取和删除不受影响，也不会清掉已有记录。
+        //
+        // 放在这里而不是页面上：本地只有贴子页和吧页这两处写入（fork 是在两个页面上各判一次），
+        // 仓库是唯一的写入出口，以后新增入口也不会漏掉这个开关。
+        if (settingsRepository.habitSettings.snapshot().incognitoMode) return
         withContext(NonCancellable) {
             when (history) {
                 is ThreadHistory -> threadHistoryDao.upsert(history)

@@ -52,6 +52,7 @@ annotation class WaterType {
  * @param hideReplyWarning 隐藏回贴风险提示
  * @param imageLoadType 图片加载设置
  * @param imageWatermarkType 图片上传水印设置
+ * @param incognitoMode 不保存浏览记录（贴子/吧浏览历史）
  * @param showBothName 同时显示用户名和昵称
  * @param stickyHeader 帖子页面是否使用StickyHeader
  * @param videoAutoplay 视频自动播放
@@ -67,6 +68,7 @@ data class HabitSettings(
     val hideReplyWarning: Boolean = false,
     val imageLoadType: Int = ImageUtil.SETTINGS_SMART_ORIGIN,
     @WaterType val imageWatermarkType: Int = WaterType.FORUM_NAME,
+    val incognitoMode: Boolean = false,
     val showBothName: Boolean = false,
     val stickyHeader: Boolean = true,
     val videoAutoplay: Boolean = true,

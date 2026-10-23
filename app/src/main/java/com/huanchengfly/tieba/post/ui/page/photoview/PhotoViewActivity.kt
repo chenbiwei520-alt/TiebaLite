@@ -1,168 +1,155 @@
 package com.huanchengfly.tieba.post.ui.page.photoview
 
 import android.content.Context
-import android.graphics.Color
 import android.os.Bundle
-import android.view.MenuItem
-import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
 import android.widget.Toast
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.Toolbar
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.core.view.updatePadding
-import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.MimeTypes
-import androidx.recyclerview.widget.RecyclerView
-import coil3.imageLoader
-import com.github.iielse.imageviewer.ImageViewerDialogFragment
-import com.github.iielse.imageviewer.core.Components
-import com.github.iielse.imageviewer.core.OverlayCustomizer
-import com.github.iielse.imageviewer.core.Transformer
-import com.github.iielse.imageviewer.core.ViewerCallback
-import com.github.iielse.imageviewer.utils.Config
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
-import com.huanchengfly.tieba.post.arch.collectIn
-import com.huanchengfly.tieba.post.components.viewer.SimpleImageLoader
 import com.huanchengfly.tieba.post.goToActivityDebounced
 import com.huanchengfly.tieba.post.models.PhotoViewData
 import com.huanchengfly.tieba.post.models.PicItem
+import com.huanchengfly.tieba.post.theme.DefaultDarkColors
+import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.toastShort
-import com.huanchengfly.tieba.post.utils.DisplayUtil.doOnApplyWindowInsets
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.LocalMorphState
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.MorphAnchor
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.MorphGallery
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.MorphState
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.originUrls
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.rememberMorphState
 import com.huanchengfly.tieba.post.utils.ImageUtil
+import com.huanchengfly.tieba.post.utils.TiebaLog
 import com.huanchengfly.tieba.post.utils.extension.getParcelableExtraCompat
 import com.huanchengfly.tieba.post.utils.extension.toShareIntent
 import kotlinx.coroutines.launch
 
-class PhotoViewActivity : AppCompatActivity(), OverlayCustomizer, ViewerCallback {
+/**
+ * 看图页的独立窗口形态（兜底）。
+ *
+ * 应用内绝大多数时候走主窗口里的叠层（[PhotoViewer]）。只有当叠层宿主还没进组合、
+ * 或者调用方拿不到形变状态时，才会退到这个独立 Activity；此时它自己也挂一套
+ * [MorphState] + [MorphGallery]，动画与主窗口完全一致，只是没有卡片槽位可用，
+ * 起点取屏幕中心。
+ * */
+class PhotoViewActivity : AppCompatActivity() {
 
     private val viewModel: PhotoViewViewModel by viewModels()
-
-    private val fragmentManager: FragmentManager by lazy { supportFragmentManager }
 
     private val windowInsetsController: WindowInsetsControllerCompat by lazy {
         WindowCompat.getInsetsController(window, window.decorView)
     }
 
-    private var currentPage: Int = 0
-
-    private lateinit var appbar: LinearLayout
-    private var toolbar: Toolbar? = null
+    private lateinit var photoViewData: PhotoViewData
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(scrim = android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(scrim = android.graphics.Color.TRANSPARENT),
+        )
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_photo_view)
-        WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        val data: PhotoViewData = intent.getParcelableExtraCompat(EXTRA_PHOTO_VIEW_DATA)!!
+        photoViewData = intent.getParcelableExtraCompat(EXTRA_PHOTO_VIEW_DATA)!!
+        viewModel.initData(photoViewData)
+        windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
 
-        viewModel.initData(data)
-        viewModel.state.collectIn(this) { uiState ->
-            when {
-                uiState.error != null -> {
-                    Toast.makeText(application, uiState.error.getErrorMessage(), Toast.LENGTH_LONG).show()
-                    finish()
-                    return@collectIn
+        setContent {
+            TiebaLiteTheme(colorSchemeExt = DefaultDarkColors) {
+                val morphState = rememberMorphState()
+                CompositionLocalProvider(LocalMorphState provides morphState) {
+                    val uiState by viewModel.state.collectAsStateWithLifecycle()
+
+                    LaunchedEffect(uiState.error) {
+                        val error = uiState.error ?: return@LaunchedEffect
+                        Toast.makeText(application, error.getErrorMessage(), Toast.LENGTH_LONG).show()
+                        morphState.collapse()
+                    }
+
+                    // 形变收拢播完才退出窗口：中间那几帧飞行图片还在飞，提前 finish 会露底。
+                    LaunchedEffect(Unit) {
+                        var opened = false
+                        snapshotFlow { morphState.isPresent }.collect { present ->
+                            if (present) opened = true else if (opened) finish()
+                        }
+                    }
+
+                    BackHandler { morphState.collapse() }
+
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        val screenRect = remember(constraints.maxWidth, constraints.maxHeight) {
+                            Rect(
+                                left = 0f,
+                                top = 0f,
+                                right = constraints.maxWidth.toFloat(),
+                                bottom = constraints.maxHeight.toFloat(),
+                            )
+                        }
+                        // 没有卡片槽位：起点取屏幕中心一块矩形，仍然是无导航栈切换的形变。
+                        LaunchedEffect(screenRect) {
+                            if (morphState.isPresent) return@LaunchedEffect
+                            morphState.reportScreenBounds(screenRect)
+                            val urls = photoViewData.originUrls()
+                            if (urls.isEmpty()) return@LaunchedEffect
+                            val index = photoViewData.data?.originUrl
+                                ?.let(urls::indexOf)
+                                ?.takeIf { it >= 0 }
+                                ?: photoViewData.index.coerceIn(0, urls.lastIndex)
+                            val half = minOf(screenRect.width, screenRect.height) * 0.18f
+                            val cx = screenRect.center.x
+                            val cy = screenRect.center.y
+                            morphState.open(
+                                urls = urls,
+                                index = index,
+                                bounds = Rect(cx - half, cy - half, cx + half, cy + half),
+                                cornerRadiusPx = 0f,
+                            )
+                        }
+
+                        MorphGallery(
+                            morphState = morphState,
+                            items = uiState.data,
+                            modifier = Modifier.fillMaxSize(),
+                            initialIndex = uiState.initialIndex,
+                            onPageShown = viewModel::onPageShown,
+                            onShare = ::onShareImage,
+                            onSave = { url -> ImageUtil.download(this@PhotoViewActivity, url = url) },
+                        )
+                    }
                 }
-
-                uiState.data.isEmpty() -> return@collectIn
-
-                fragmentManager.findFragmentById(android.R.id.content) != null -> return@collectIn
             }
-
-            // Use window background
-            Config.VIEWER_BACKGROUND_COLOR = Color.TRANSPARENT
-            Config.SWIPE_DISMISS = false
-
-            if (Components.working) finish()
-            Components.initialize(
-                imageLoader = SimpleImageLoader(
-                    lifecycle = lifecycle,
-                    loader = imageLoader,
-                    onClick = this::onImageClicked,
-                ),
-                dataProvider = viewModel,
-                transformer = object : Transformer { /*** NO-OP ***/ }
-            )
-            Components.setViewerCallback(this)
-            Components.setOverlayCustomizer(overlayCustomizer)
-
-            supportFragmentManager.beginTransaction()
-                .add(android.R.id.content, ImageViewerFragment())
-                .commit()
-
-            val indicator = findViewById<View>(android.R.id.progress) ?: return@collectIn
-            (indicator.parent as ViewGroup).removeView(indicator)
         }
     }
 
-    /**
-     * Setup appbar in overlay, it's a workaround
-     * */
-    private val overlayCustomizer: OverlayCustomizer = object : OverlayCustomizer {
-        override fun provideView(parent: ViewGroup): View? {
-            val view = layoutInflater.inflate(R.layout.overlay_photo_view, parent, false)
-            appbar = view.findViewById(R.id.appbar)
-            appbar.doOnApplyWindowInsets { insets ->
-                val sysBar = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-                if (sysBar.top != 0) {
-                    updatePadding(left = sysBar.left, top = sysBar.top, right = sysBar.right)
-                }
-                return@doOnApplyWindowInsets true
-            }
-
-            toolbar = appbar.findViewById<Toolbar>(R.id.toolbar).apply {
-                inflateMenu(R.menu.menu_photo_view)
-                setNavigationIcon(R.drawable.ic_round_arrow_back)
-                setNavigationOnClickListener { this@PhotoViewActivity.finish() }
-                navigationIcon?.setTint(Color.WHITE)
-                setOnMenuItemClickListener(this@PhotoViewActivity::onOptionsItemSelected)
-            }
-            return view
-        }
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.menu_share -> onShareImage()
-
-            R.id.menu_download -> ImageUtil.download(this, url = getCurrentItem()?.originUrl)
-
-            else -> return super.onOptionsItemSelected(item)
-        }
-        return true
-    }
-
-    /**
-     * Hide or show system bar on image clicked
-     * */
-    @Suppress("unused")
-    private fun onImageClicked(v: View) {
-        if (appbar.isVisible) {
-            windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
-            appbar.animate().alpha(0f).withEndAction {
-                appbar.visibility = View.GONE
-            }
-        } else {
-            windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
-            appbar.visibility = View.VISIBLE
-            appbar.animate().alphaBy(1f)
-        }
-    }
-
-    private fun onShareImage() {
-        val currentImg = getCurrentItem() ?: return
+    private fun onShareImage(item: PhotoViewItem) {
         toastShort(R.string.toast_preparing_share_pic)
         lifecycleScope.launch {
-            ImageUtil.downloadForShare(applicationContext, currentImg.originUrl)
+            ImageUtil.downloadForShare(applicationContext, item.originUrl)
                 .onSuccess {
-                    val intent = it.toShareIntent(this@PhotoViewActivity, MimeTypes.IMAGE_JPEG, getString(R.string.title_share_pic))
+                    val intent = it.toShareIntent(
+                        this@PhotoViewActivity,
+                        MimeTypes.IMAGE_JPEG,
+                        getString(R.string.title_share_pic)
+                    )
                     runCatching { startActivity(intent) }
                 }
                 .onFailure {
@@ -170,17 +157,6 @@ class PhotoViewActivity : AppCompatActivity(), OverlayCustomizer, ViewerCallback
                 }
         }
     }
-
-    override fun onPageSelected(position: Int, viewHolder: RecyclerView.ViewHolder) {
-        currentPage = position
-        toolbar?.let {
-            val state = viewModel.state.value
-            val currentItem = state.data[position]
-            it.title = "${currentItem.overallIndex} / ${state.totalAmount}"
-        }
-    }
-
-    private fun getCurrentItem(): PhotoViewItem? = viewModel.state.value.data.getOrNull(currentPage)
 
     companion object {
 
@@ -191,7 +167,22 @@ class PhotoViewActivity : AppCompatActivity(), OverlayCustomizer, ViewerCallback
          * */
         const val EXTRA_PHOTO_VIEW_DATA = "photo_view_data"
 
-        fun launch(context: Context, data: PhotoViewData) {
+        fun launch(
+            context: Context,
+            data: PhotoViewData,
+            morphState: MorphState? = null,
+            anchor: MorphAnchor? = null,
+        ) {
+            // 应用内一律走主窗口里的叠层（[PhotoViewer]）：看图页作为独立 Activity 时，图片还在
+            // 加载的那一两秒里，边缘侧滑会被系统手势区在窗口之前取走（窗口连 down 都收不到），
+            // 返回键也投递不过来，看起来就是「加载中侧滑返回没反应」。放进主窗口就能用普通的
+            // BackHandler，和 App 其它页面同一条返回链路。
+            TiebaLog.d(
+                "PhotoViewLaunch",
+                "launch anchor=" + (anchor?.url?.takeLast(24) ?: "null") +
+                    " picIndex=" + data.data?.picIndex + " picItems=" + data.picItems.size
+            )
+            if (PhotoViewer.openIfAttached(data, morphState, anchor)) return
             context.goToActivityDebounced<PhotoViewActivity> {
                 putExtra(EXTRA_PHOTO_VIEW_DATA, data)
             }
@@ -205,24 +196,5 @@ class PhotoViewActivity : AppCompatActivity(), OverlayCustomizer, ViewerCallback
                 context.toastShort(R.string.desc_image_empty_url)
             }
         }
-
-        class ImageViewerFragment : ImageViewerDialogFragment() {
-
-            /**
-             * Suppress exit animation in super
-             * */
-            override fun onBackPressed() {
-                requireActivity().finish()
-                Components.release() // Do not wait onDestroyView, release it now
-            }
-        }
-
-        inline var View.isVisible: Boolean
-            get() = visibility == View.VISIBLE
-            set(value) {
-                if (isVisible xor value) {
-                    visibility = if (value) View.VISIBLE else View.GONE
-                }
-            }
     }
 }

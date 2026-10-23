@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- miuix-blur declares minSdk 33; all blur code paths are gated by
+         isRuntimeShaderSupported() and fall back to opaque bars below API 33 -->
+    <uses-sdk tools:overrideLibrary="top.yukonga.miuix.kmp.blur" />
+
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -46,12 +50,15 @@
         </intent>
     </queries>
 
+    <!-- Predictive back is off: the app opts out of the system's back-gesture preview
+         (android:enableOnBackInvokedCallback="false"). Back still works everywhere — dismissals go
+         through the ordinary back dispatch, they just no longer animate with the gesture. -->
     <application
         android:name=".App"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_descriptor"
-        android:enableOnBackInvokedCallback="true"
+        android:enableOnBackInvokedCallback="false"
         android:icon="@mipmap/ic_launcher_new"
         android:label="@string/app_name"
         android:largeHeap="true"
@@ -61,10 +68,14 @@
         android:usesCleartextTraffic="true"
         tools:ignore="UnusedAttribute">
 
+        <!-- 看图页单独打开预测性返回：图片还在下载时，系统把边缘侧滑当成普通的横向拖动交给
+             窗口（会被 Pager/缩放图消费掉），侧滑返回就整个失效；打开预测性返回后这个手势从
+             一开始就由系统接管，不再受窗口内手势影响。App 其它页面仍走旧的返回键分发。 -->
         <activity
             android:name=".ui.page.photoview.PhotoViewActivity"
             android:configChanges="screenSize|screenLayout|orientation|smallestScreenSize|keyboardHidden"
             android:theme="@style/Theme.Transparent.PhotoView"
+            android:enableOnBackInvokedCallback="true"
             android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize" />
 

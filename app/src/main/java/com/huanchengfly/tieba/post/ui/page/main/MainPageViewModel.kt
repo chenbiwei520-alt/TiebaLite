@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.huanchengfly.tieba.post.arch.stateInViewModel
 import com.huanchengfly.tieba.post.repository.HomeRepository
+import com.huanchengfly.tieba.post.repository.user.SettingsRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +18,16 @@ import javax.inject.Inject
 class MainPageViewModel @Inject constructor(
     @ApplicationContext val context: Context,
     private val homeRepo: HomeRepository,
+    private val settingsRepo: SettingsRepository,
 ): ViewModel() {
+
+    /** 横屏侧边栏「仅图标 / 图标+文字」切换（持久化，旋转后保持）。 */
+    fun onRailDisplayModeChanged() =
+        settingsRepo.uiSettings.save { it.copy(railExpanded = !it.railExpanded) }
+
+    /** Mirrors the rail's own expand/collapse button back into settings. */
+    fun setRailExpanded(expanded: Boolean) =
+        settingsRepo.uiSettings.save { it.copy(railExpanded = expanded) }
 
     val messageCountFlow: StateFlow<String?> = homeRepo.observeNewMessage()
         .catch { /* Ignored */ }

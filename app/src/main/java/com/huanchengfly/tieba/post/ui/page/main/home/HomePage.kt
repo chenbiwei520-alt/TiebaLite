@@ -3,7 +3,12 @@ package com.huanchengfly.tieba.post.ui.page.main.home
 import androidx.activity.compose.ReportDrawnWhen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,15 +36,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.outlined.ViewAgenda
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
@@ -62,6 +63,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -91,7 +93,6 @@ import com.huanchengfly.tieba.post.ui.common.LocalSharedTransitionScope
 import com.huanchengfly.tieba.post.ui.common.localSharedBounds
 import com.huanchengfly.tieba.post.ui.common.theme.compose.clickableNoIndication
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onCase
-import com.huanchengfly.tieba.post.ui.common.theme.compose.onNotNull
 import com.huanchengfly.tieba.post.ui.models.LikedForum
 import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.LocalNavController
@@ -107,8 +108,12 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
-import com.huanchengfly.tieba.post.ui.widgets.compose.LocalHazeState
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
+import com.huanchengfly.tieba.post.ui.miuix.LocalLiquidGlassBackdrop
 import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
+import com.huanchengfly.tieba.post.plus
+import com.huanchengfly.tieba.post.ui.widgets.compose.ListItemCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyVerticalGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.PositiveButton
@@ -119,51 +124,93 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBarPaged
 import com.huanchengfly.tieba.post.ui.widgets.compose.color
 import com.huanchengfly.tieba.post.ui.widgets.compose.placeholder
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
+import com.huanchengfly.tieba.post.ui.widgets.compose.states.MiuixLoadingIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.LocalAccount
 import com.huanchengfly.tieba.post.utils.TiebaUtil
-import dev.chrisbanes.haze.hazeSource
+import com.huanchengfly.tieba.post.ui.miuix.rememberSearchBarGlass
 import kotlin.random.Random
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixEnterAlwaysScrollBehavior
+import top.yukonga.miuix.kmp.basic.InputField
+import top.yukonga.miuix.kmp.basic.SearchBar
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Check
+import top.yukonga.miuix.kmp.icon.extended.GridView
+import top.yukonga.miuix.kmp.icon.extended.ListView
 
 private val FORUM_AVATAR_SIZE = 40.dp
-
-@Preview("DummySearchBox")
+@Preview("HomeSearchBar")
 @Composable
-private fun DummySearchBoxPreview() {
+private fun HomeSearchBarPreview() {
     Column {
         TiebaLiteTheme {
-            DummySearchBox(onClick = {})
+            HomeSearchBar(onClick = {})
         }
 
         TiebaLiteTheme(colorSchemeExt = DefaultDarkColors) {
-            DummySearchBox(onClick =  {})
+            HomeSearchBar(onClick = {})
         }
     }
 }
 
+/**
+ * Home search entry built on the Miuix [SearchBar] / [InputField] pair.
+ *
+ * The home page only routes to the dedicated search screen (`Destination.Search` carries no query),
+ * so the field is display-only: a transparent layer above it swallows the tap before the field can
+ * take focus, which keeps the IME closed and sends every tap to [onClick]. Because the entry never
+ * expands, [SearchBar]'s results slot stays empty.
+ *
+ * With a non-null [backdrop] the capsule is glass: the shared [rememberSearchBarGlass] treatment —
+ * the same one `MiuixSearchTopBar` uses on the search page — blurs the content recorded by the host
+ * Scaffold's full-screen capture (also the top bar's progressive-blur source). That capture is
+ * recorded on every frame, which is what keeps the capsule readable while the page loads: a
+ * page-level capture only exists in `StateScreen`'s content branch, and blurring an unrecorded layer
+ * yields transparent black. Null (below API 33) falls back to the flat `surfaceContainerHigh`
+ * capsule.
+ *
+ * @param backdrop the host capture recording the content behind the capsule (the Scaffold's, read in
+ *   the `topBar` slot), or null to keep the flat capsule.
+ */
 @Composable
-private fun DummySearchBox(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        modifier = Modifier
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .fillMaxWidth()
-            .then(modifier),
-        shape = MaterialTheme.shapes.small,
-        tonalElevation = 6.dp
+private fun HomeSearchBar(
+    modifier: Modifier = Modifier,
+    backdrop: LayerBackdrop? = null,
+    onClick: () -> Unit,
+) {
+    val glass = rememberSearchBarGlass(backdrop)
+
+    Box(
+        // SearchBar already insets its content by 12dp; add the remainder to line up with the
+        // page's 16dp gutter.
+        modifier = modifier.padding(horizontal = 4.dp, vertical = 8.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+        SearchBar(
+            inputField = {
+                InputField(
+                    query = "",
+                    onQueryChange = {/* Display-only entry */ },
+                    onSearch = {/* Handled by the search screen */ },
+                    expanded = false,
+                    onExpandedChange = {/* Never expands */ },
+                    label = stringResource(id = R.string.hint_search),
+                    modifier = glass.modifier,
+                    color = glass.capsuleColor,
+                )
+            },
+            onExpandedChange = {/* Never expands */ },
+            expanded = false,
+            modifier = Modifier.fillMaxWidth(),
         ) {
-            Icon(
-                imageVector = Icons.Rounded.Search,
-                contentDescription = null,
-                modifier = Modifier.size(Sizes.Tiny),
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(text = stringResource(id = R.string.hint_search), style = MaterialTheme.typography.bodyMedium)
+            // Unreachable: this entry routes to Destination.Search instead of searching in place.
         }
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickableNoIndication(onClick = onClick)
+        )
     }
 }
 
@@ -177,7 +224,9 @@ private fun Header(text: String, modifier: Modifier = Modifier, invert: Boolean 
 @Composable
 private fun ForumItemPlaceholder(showAvatar: Boolean) {
     Row(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         val placeholderColor = PlaceholderDefaults.color()
@@ -291,6 +340,10 @@ private fun ForumItemContent(forum: LikedForum, showAvatar: Boolean) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            // Inset of the content inside the card. Independent from the grid's contentPadding,
+            // which only controls the gap between the card and the screen edge — dropping this
+            // left the name flush against the card border and the 54.dp level badge colliding with
+            // the corner radius.
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -318,7 +371,7 @@ private fun ForumItemContent(forum: LikedForum, showAvatar: Boolean) {
 
         Surface(
             modifier = Modifier.width(54.dp),
-            shape = MaterialTheme.shapes.extraSmall,
+            shape = SquircleShape(SquircleCornerRadius.ExtraSmall),
             color = MaterialTheme.colorScheme.secondary,
         ) {
             Row(
@@ -332,7 +385,7 @@ private fun ForumItemContent(forum: LikedForum, showAvatar: Boolean) {
                     Spacer(modifier = Modifier.width(4.dp))
 
                     Icon(
-                        imageVector = Icons.Rounded.Check,
+                        imageVector = MiuixIcons.Basic.Check,
                         contentDescription = stringResource(id = R.string.tip_signed),
                         modifier = Modifier.size(12.dp),
                     )
@@ -358,28 +411,69 @@ private fun LazyGridScope.forumItems(
         val context = LocalContext.current
         val forum = forums[it]
         if (forum != null) {
-            LongClickMenu(
-                menuContent = {
-                    TextMenuItem(text = if (isTopPinnedForum) R.string.menu_top_del else R.string.menu_top) {
-                        onPinnedForumChanged(forum, !isTopPinnedForum)
-                    }
-                    TextMenuItem(text = R.string.title_copy_forum_name) {
-                        TiebaUtil.copyText(context, forum.name)
-                    }
-                    TextMenuItem(text = R.string.button_unfollow) {
-                        onUnfollow(forum)
-                    }
-                },
-                modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
-                onClick = { onClick(forum) }
+            ListItemCard(
+                modifier = Modifier.animateItem(
+                    placementSpec = ForumReflowPlacementSpec,
+                    fadeInSpec = ForumReflowFadeInSpec,
+                    fadeOutSpec = ForumReflowFadeOutSpec,
+                )
             ) {
-                ForumItemContent(forum, showAvatar)
+                LongClickMenu(
+                    menuContent = {
+                        TextMenuItem(text = if (isTopPinnedForum) R.string.menu_top_del else R.string.menu_top) {
+                            onPinnedForumChanged(forum, !isTopPinnedForum)
+                        }
+                        TextMenuItem(text = R.string.title_copy_forum_name) {
+                            TiebaUtil.copyText(context, forum.name)
+                        }
+                        TextMenuItem(text = R.string.button_unfollow) {
+                            onUnfollow(forum)
+                        }
+                    },
+                    onClick = { onClick(forum) }
+                ) {
+                    ForumItemContent(forum, showAvatar)
+                }
             }
         } else {
-            ForumItemPlaceholder(showAvatar)
+            ListItemCard {
+                ForumItemPlaceholder(showAvatar)
+            }
         }
     }
 }
+
+/**
+ * Column-count reflow motion for the forum grid.
+ *
+ * Miuix ships no dedicated single/multi-column transition component — its only grid-related class
+ * is an internal `LazyGridAdapter` for scrollbars. The HyperOS launcher effect people recognise is
+ * Compose's item placement animation: when [MyLazyVerticalGrid]'s `gridCells` changes, every item
+ * gets a new slot, and `Modifier.animateItem` tweens each item from its old offset to the new one
+ * with a short cross-fade layered on top.
+ *
+ * Two things this needs to actually run, both of which were previously wrong:
+ *  - `animateItem` must sit on the **item root**. It used to be applied to `LongClickMenu`, a nested
+ *    child, so the placement tween never applied and the grid snapped instead of sliding.
+ *  - the fade specs must not be null. They were `fadeInSpec = null, fadeOutSpec = null`, so the
+ *    cross-fade half of the effect was silently disabled.
+ *
+ * Durations follow HyperOS motion: ~220 ms decelerate on enter, ~120 ms accelerate on exit, and a
+ * soft spring for the positional move so items settle rather than stop dead.
+ */
+private val ForumReflowPlacementSpec = spring<IntOffset>(
+    stiffness = Spring.StiffnessMediumLow,
+)
+
+private val ForumReflowFadeInSpec = tween<Float>(
+    durationMillis = 220,
+    easing = FastOutSlowInEasing,
+)
+
+private val ForumReflowFadeOutSpec = tween<Float>(
+    durationMillis = 120,
+    easing = FastOutLinearInEasing,
+)
 
 private val DefaultGridSpan: LazyGridItemSpanScope.() -> GridItemSpan = {
     GridItemSpan(maxLineSpan)
@@ -399,12 +493,11 @@ fun AnimatedVisibilityScope.HomePage(
     onOpenExplore: () -> Unit = {},
 ) {
     val loggedIn = LocalAccount.current != null
-    val hazeState = LocalHazeState.current
     val sharedTransitionScope = LocalSharedTransitionScope.current
     val context = LocalContext.current
     val navigator = LocalNavController.current
     val gridState = rememberLazyGridState()
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val scrollBehavior = rememberMiuixEnterAlwaysScrollBehavior()
 
     var unfollowForum by remember { mutableStateOf<LikedForum?>(null) }
     val confirmUnfollowDialog = rememberDialogState()
@@ -421,18 +514,35 @@ fun AnimatedVisibilityScope.HomePage(
         }
     }
 
+    // Read once, above the scaffold: the toggle lives in the top bar while the grid lives in the
+    // content lambda, and both need the same value to stay in sync.
+    val listSingle = LocalUISettings.current.homeForumList
+
     MyScaffold(
-        useMD2Layout = hazeState == null,
         topBar = {
+            // Both glass surfaces in this bar sample the **Scaffold's** full-screen capture, read
+            // here inside the `topBar` slot: `MyScaffold` provides `LocalLiquidGlassBackdrop` around
+            // the Miuix Scaffold, so a read in the page body always comes back null.
+            //
+            // The page used to keep its own `rememberMiuixBarBackdrop()` capture, recorded by a Box
+            // inside `StateScreen`'s content lambda. `StateScreen` composes exactly one of error /
+            // loading / empty / content, so on the initial load and on every refresh that Box left
+            // the composition and the layer stayed unrecorded. `textureBlur` samples the layer
+            // unconditionally and blurring an unrecorded layer yields transparent black, so the 42%
+            // light tint composited over it rendered the search entry as a flat dark slab while
+            // refreshing. The Scaffold's capture is recorded on every frame and — because Miuix's
+            // Scaffold lays the body out from (0, 0) — also covers the strip the bar floats over,
+            // including the pull-to-refresh container's displaced content.
+            val glassBackdrop = LocalLiquidGlassBackdrop.current
             TopAppBarPaged(
                 modifier = Modifier
                     .topAppBarBlurEffect(
                         sharedTransitionScope = sharedTransitionScope,
                         rootAnimatedVisibilityScope = LocalAnimatedVisibilityScope.current,
-                        hazeState = hazeState,
-                        blurEnabled = { gridState.canScrollBackward || scrollBehavior.isOverlapping }
+                        blurEnabled = { gridState.canScrollBackward || scrollBehavior.isOverlapping },
                     ),
-                title = { Text(text = stringResource(R.string.title_main)) },
+                // No page title: the account avatar and the action icons already identify the page.
+                title = {},
                 navigationIcon = {
                     AccountNavIconIfCompact(onLoginClicked = { navigator.navigate(Destination.Login) })
                 },
@@ -448,7 +558,9 @@ fun AnimatedVisibilityScope.HomePage(
                         }
 
                         ActionItem(
-                            icon = Icons.Outlined.ViewAgenda,
+                            // Icon doubles as the state indicator: list view while in single-column
+                            // mode, grid view while in two-column mode.
+                            icon = if (listSingle) MiuixIcons.ListView else MiuixIcons.GridView,
                             contentDescription = R.string.title_switch_list_single,
                             onClick = viewModel::onListModeChanged
                         )
@@ -458,10 +570,14 @@ fun AnimatedVisibilityScope.HomePage(
                 canScrollBackward = {
                     sharedTransitionScope?.isTransitionActive != true && !transition.isRunning && gridState.canScrollBackward
                 },
+                backdrop = glassBackdrop,
             ) {
-                DummySearchBox(
+                HomeSearchBar(
                     modifier = Modifier.localSharedBounds(key = SearchToolbarSharedBoundsKey, zIndexInOverlay = 2.0f),
-                    onClick = { navigator.navigateDebounced(route = Destination.Search) }
+                    // The same capture the top bar's progressive blur samples: the capsule blurs
+                    // the page content that scrolls underneath it, in every page state.
+                    backdrop = glassBackdrop,
+                    onClick = { navigator.navigateDebounced(route = Destination.Search) },
                 )
                 Spacer(modifier = Modifier.height(4.dp))
             }
@@ -479,9 +595,11 @@ fun AnimatedVisibilityScope.HomePage(
         val isPinnedNotEmpty = pinnedForums.itemCount > 0
         val isLoading = uiState.isLoading || historyForums == null
 
-        val listSingle = LocalUISettings.current.homeForumList
         val gridCells = remember(listSingle) {
-            if (listSingle) GridCells.Fixed(1) else GridCells.Adaptive(180.dp)
+            // Fixed(2), not Adaptive(180.dp): the content column is only ~308.dp wide on a 360.dp
+            // phone, so a 180.dp minimum yields floor(308 / 180) = 1 column — identical to the
+            // single-column layout, which is why toggling appeared to do nothing.
+            if (listSingle) GridCells.Fixed(1) else GridCells.Fixed(2)
         }
 
         // Initialize click listeners now
@@ -513,7 +631,7 @@ fun AnimatedVisibilityScope.HomePage(
                 EmptyScreen(onExploreClicked = onOpenExplore)
             },
             loadingScreen = {
-                HomePageSkeletonScreen(listSingle = listSingle, gridCells = gridCells)
+                HomePageSkeletonScreen(modifier = Modifier.fillMaxSize())
             },
             errorScreen = {
                 if (uiState.error is TiebaNotLoggedInException) {
@@ -535,10 +653,13 @@ fun AnimatedVisibilityScope.HomePage(
                     columns = gridCells,
                     modifier = Modifier
                         .fillMaxSize()
-                        .onNotNull(hazeState) { hazeSource(state = it.state) }
                         .nestedScroll(scrollBehavior.nestedScrollConnection),
                     state = gridState,
-                    contentPadding = contentPaddings,
+                    // Gutters and rhythm match the other card lists; the item's own horizontal
+                    // padding was removed so the cards line up with them.
+                    contentPadding = contentPaddings + PaddingValues(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     historyForums?.takeUnless { it.isEmpty() }?.let {
                         item(key = ForumType.History.hashCode(), DefaultGridSpan, { ForumType.History }) {
@@ -597,19 +718,11 @@ private fun ExploreButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
 }
 
 @Composable
-private fun HomePageSkeletonScreen(
-    modifier: Modifier = Modifier,
-    listSingle: Boolean,
-    gridCells: GridCells
-) {
-    MyLazyVerticalGrid(
-        columns = gridCells,
-        modifier = modifier,
-        userScrollEnabled = false
-    ) {
-        items(24, key = { it }) {
-            ForumItemPlaceholder(listSingle)
-        }
+private fun HomePageSkeletonScreen(modifier: Modifier = Modifier) {
+    // Was a 24-cell grid of shimmer placeholders; now the shared Miuix ring, centred in the same
+    // area. The parameters went away with the grid — the ring does not care about column count.
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        MiuixLoadingIndicator()
     }
 }
 
@@ -670,7 +783,7 @@ private fun EmptyScreen(modifier: Modifier = Modifier, onExploreClicked: () -> U
 @Composable
 private fun HomePageSkeletonScreenPreview() = TiebaLiteTheme {
     Surface {
-        HomePageSkeletonScreen(listSingle = true, gridCells = GridCells.Fixed(1))
+        HomePageSkeletonScreen()
     }
 }
 

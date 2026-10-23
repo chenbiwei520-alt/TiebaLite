@@ -97,7 +97,7 @@ abstract class ResultDialog<T>() : DialogFragment() {
         dialog?.window?.let { window ->
             val uiSettings = (requireContext().applicationContext as App).settingRepository.uiSettings
             lifecycleScope.launch {
-                onSetupWindow(window, backgroundBlur = !uiSettings.snapshot().reduceEffect)
+                onSetupWindow(window, backgroundBlur = true)
             }
         }
     }

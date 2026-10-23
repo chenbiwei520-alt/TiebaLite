@@ -3,7 +3,6 @@ package com.huanchengfly.tieba.post.ui.page.history
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -12,6 +11,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,20 +22,13 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.DeleteSweep
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.ListItemElevation
-import androidx.compose.material3.ListItemShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
@@ -55,10 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.util.fastForEachIndexed
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -76,6 +66,10 @@ import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.repository.UserHistory
 import com.huanchengfly.tieba.post.theme.ProvideContentColorTextStyle
 import com.huanchengfly.tieba.post.toastShort
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
+import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
 import com.huanchengfly.tieba.post.ui.ForumAvatarSharedBoundsKey
 import com.huanchengfly.tieba.post.ui.ForumTitleSharedBoundsKey
 import com.huanchengfly.tieba.post.ui.common.FadedVisibility
@@ -95,18 +89,23 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultBackToTopFAB
 import com.huanchengfly.tieba.post.ui.widgets.compose.DeleteIconButton
-import com.huanchengfly.tieba.post.ui.widgets.compose.ExtendedFabHeight
-import com.huanchengfly.tieba.post.ui.widgets.compose.FancyAnimatedIndicatorWithModifier
 import com.huanchengfly.tieba.post.ui.widgets.compose.MoreMenuItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBarPaged
 import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeaderPlaceholder
-import com.huanchengfly.tieba.post.ui.widgets.compose.preference.SegmentedListItemColors
+import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberPagerListStates
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberSnackbarHostState
 import com.huanchengfly.tieba.post.utils.DateTimeUtils
 import kotlinx.coroutines.launch
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixPinnedScrollBehavior
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.CardDefaults
+import top.yukonga.miuix.kmp.basic.FloatingActionButtonDefaults
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Check
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 /**
  * Date Header -> Null
@@ -124,7 +123,7 @@ fun HistoryPage(
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = rememberSnackbarHostState()
     val sharedTransitionScope = LocalSharedTransitionScope.current
-    val scaffoldContentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp + ExtendedFabHeight)
+    val scaffoldContentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 32.dp + FloatingActionButtonDefaults.MinHeight)
 
     val tabs = remember {
         listOf(
@@ -158,7 +157,7 @@ fun HistoryPage(
         navigator.navigateDebounced(route = route)
     }
 
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = rememberMiuixPinnedScrollBehavior()
     val isUpdating by viewModel.updating.collectAsStateWithLifecycle()
 
     val selectedItems = remember { mutableStateSetOf<History>() }
@@ -170,6 +169,8 @@ fun HistoryPage(
 
     val listStates = rememberPagerListStates(tabs.size)
     val pagerState = rememberPagerState { tabs.size }
+    // Feeds the liquid glass fill of the tab row's pills
+    val tabBackdrop = rememberMiuixBarBackdrop()
 
     MyScaffold(
         topBar = {
@@ -209,6 +210,8 @@ fun HistoryPage(
                             }
                         },
                         triggerShape = CircleShape,
+                        triggerIcon = Icons.Rounded.MoreVert,
+                        triggerContentDescription = stringResource(id = R.string.btn_more),
                         content = MoreMenuItem,
                     )
                 },
@@ -216,28 +219,17 @@ fun HistoryPage(
                 canScrollBackward = {
                     sharedTransitionScope?.isTransitionActive != true && listStates[pagerState.currentPage].canScrollBackward
                 },
+                backdrop = tabBackdrop,
                 content = {
                     AnimatedVisibility(visible = !selectMode) {
-                        PrimaryTabRow(
+                        MiuixTabRow(
+                            tabs = tabs.map { stringResource(it) },
                             selectedTabIndex = pagerState.currentPage,
-                            indicator = {
-                                FancyAnimatedIndicatorWithModifier(pagerState.currentPage)
+                            onTabSelected = { i ->
+                                coroutineScope.launch { pagerState.animateScrollToPage(i) }
                             },
-                            containerColor = Color.Transparent,
-                        ) {
-                            tabs.fastForEachIndexed { i, title ->
-                                Tab(
-                                    text = {
-                                        Text(text = stringResource(id = title), letterSpacing = 0.75.sp)
-                                    },
-                                    selected = pagerState.currentPage == i,
-                                    onClick = {
-                                        coroutineScope.launch { pagerState.animateScrollToPage(i) }
-                                    },
-                                    unselectedContentColor = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
+                            backdrop = tabBackdrop,
+                        )
                     }
                 },
             )
@@ -263,7 +255,7 @@ fun HistoryPage(
                 state = pagerState,
                 modifier = Modifier.onCase(!selectMode) {
                     nestedScroll(scrollBehavior.nestedScrollConnection)
-                },
+                }.miuixLayerBackdrop(tabBackdrop),
                 key = { it },
                 userScrollEnabled = !selectMode
             ) { index ->
@@ -327,7 +319,7 @@ private fun HistoryBaseItem(
             avatar()
             if (selected) {
                 Icon(
-                    imageVector = Icons.Rounded.Check,
+                    imageVector = MiuixIcons.Basic.Check,
                     contentDescription = null,
                     modifier = Modifier
                         .matchParentSize()
@@ -409,7 +401,7 @@ private fun ThreadItem(modifier: Modifier = Modifier, item: ThreadHistory, selec
                 if (item.forum != null) {
                     Surface(
                         color = MaterialTheme.colorScheme.secondary,
-                        shape = MaterialTheme.shapes.extraSmall
+                        shape = SquircleShape(SquircleCornerRadius.ExtraSmall)
                     ) {
                         Text(
                             text = stringResource(R.string.title_forum, item.forum),
@@ -477,15 +469,14 @@ private fun <T : HistoryUiModel> HistoryColumn(
     onClick: (History) -> Unit,
     onLongClick: (History) -> Unit,
 ) {
-    val listItemColors = SegmentedListItemColors
-    val listItemElevation = ListItemElevation(Dp.Hairline, Dp.Hairline)
     val listItemContentPadding = PaddingValues(10.dp) // ListItem.InteractiveListStartPadding
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         state = state,
         contentPadding = contentPadding,
-        verticalArrangement = Arrangement.spacedBy(1.5.dp),
+        // Cards need gaps between them; the segmented list this replaced packed rows 1.5dp apart.
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         items(
             count = pagedItems.itemCount,
@@ -496,30 +487,43 @@ private fun <T : HistoryUiModel> HistoryColumn(
         ) { i ->
             when (val item = pagedItems[i]) {
                 is HistoryUiModel.Item -> item.history.let { history ->
-                    val interactionSource = remember { MutableInteractionSource() }
                     val selected = selectedItems.contains(history)
-                    SegmentedListItem(
-                        selected = selected,
-                        onClick = {
-                            onClick(history)
+                    // One Miuix card per row, matching the feed's card styling. Card's clickable
+                    // overload owns both gestures, so tap and long-press-to-select still work.
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .animateItem(fadeInSpec = null, fadeOutSpec = null),
+                        insideMargin = listItemContentPadding,
+                        colors = if (selected) {
+                            CardDefaults.defaultColors(color = MiuixTheme.colorScheme.secondaryContainer)
+                        } else {
+                            CardDefaults.defaultColors()
                         },
-                        shapes = historySegmentedShapes(index = i, pagedItems = pagedItems),
-                        modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
-                        verticalAlignment = Alignment.CenterVertically,
-                        onLongClick = {
-                            onLongClick(history)
-                        },
-                        colors = listItemColors,
-                        elevation = listItemElevation,
-                        contentPadding = listItemContentPadding,
-                        interactionSource = interactionSource,
+                        showIndication = true,
+                        onClick = { onClick(history) },
+                        onLongPress = { onLongClick(history) },
                     ) {
+                        // fillMaxWidth on the rows: Card's inner Column gives children minWidth = 0, so without it each
+                        // row would collapse to its intrinsic width inside the card.
                         when (history) {
-                            is ThreadHistory -> ThreadItem(item = history, selected = selected)
+                            is ThreadHistory -> ThreadItem(
+                                modifier = Modifier.fillMaxWidth(),
+                                item = history,
+                                selected = selected
+                            )
 
-                            is ForumHistory -> ForumItem(item = history, selected = selected)
+                            is ForumHistory -> ForumItem(
+                                modifier = Modifier.fillMaxWidth(),
+                                item = history,
+                                selected = selected
+                            )
 
-                            is UserHistory -> UserItem(item = history, selected = selected)
+                            is UserHistory -> UserItem(
+                                modifier = Modifier.fillMaxWidth(),
+                                item = history,
+                                selected = selected
+                            )
 
                             else -> throw RuntimeException()
                         }
@@ -530,30 +534,13 @@ private fun <T : HistoryUiModel> HistoryColumn(
                     DateHeader(modifier = Modifier.animateItem(), time = item.date)
                 }
 
-                null -> UserHeaderPlaceholder(
-                    modifier = Modifier
-                        .background(listItemColors.containerColor, ListItemDefaults.shapes().shape)
-                        .padding(listItemContentPadding)
-                )
+                null -> Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    insideMargin = listItemContentPadding,
+                ) {
+                    UserHeaderPlaceholder()
+                }
             }
         }
-    }
-}
-
-@NonRestartableComposable
-@Composable
-private fun <T: HistoryUiModel> historySegmentedShapes(index: Int, pagedItems: LazyPagingItems<T>): ListItemShapes {
-    val count = pagedItems.itemCount
-    val isFirstItem = index > 0 && pagedItems.peek(index - 1) is HistoryUiModel.DateHeader
-    val isLastItem = index + 1 == count || pagedItems.peek(index + 1) is HistoryUiModel.DateHeader
-
-    return when {
-        isFirstItem && isLastItem -> ListItemDefaults.shapes().run { copy(shape = selectedShape) }
-
-        isFirstItem -> ListItemDefaults.segmentedShapes(index = 0, count = count)
-
-        isLastItem -> ListItemDefaults.segmentedShapes(index = index, count = index + 1)
-
-        else -> ListItemDefaults.segmentedShapes(index, count)
     }
 }

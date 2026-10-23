@@ -8,8 +8,10 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.ui.res.stringResource
+import top.yukonga.miuix.kmp.basic.SnackbarDuration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -32,6 +34,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.StrongBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.WebView
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberSaveableWebViewState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberSnackbarHostState
+import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeToDismissSnackbarHost
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberWebViewNavigator
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.AccountUtil.Companion.parseCookie
@@ -56,7 +59,7 @@ fun LoginPage(
     val snackbarHostState = rememberSnackbarHostState()
 
     viewModel.uiEvent.collectUiEventWithLifecycle {
-        snackbarHostState.currentSnackbarData?.dismiss()
+        snackbarHostState.newestSnackbarData()?.dismiss()
         when (it) {
             is LoginUiEvent.Start -> coroutineScope.launch {
                 snackbarHostState.showSnackbar(
@@ -87,12 +90,14 @@ fun LoginPage(
                         TextMenuItem(text = R.string.title_refresh, onClick = webViewNavigator::reload)
                     },
                     triggerShape = CircleShape,
+                    triggerIcon = Icons.Rounded.MoreVert,
+                    triggerContentDescription = stringResource(id = R.string.btn_more),
                     content = MoreMenuItem,
                 )
             }
         },
         snackbarHostState = snackbarHostState,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        snackbarHost = { SwipeToDismissSnackbarHost(snackbarHostState) },
     ) { paddingValues ->
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         StateScreen(

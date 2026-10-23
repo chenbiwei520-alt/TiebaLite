@@ -7,7 +7,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.fadeIn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -62,6 +61,7 @@ import com.huanchengfly.tieba.post.ui.page.thread.ThreadViewModel
 import com.huanchengfly.tieba.post.ui.page.threadstore.ThreadStorePage
 import com.huanchengfly.tieba.post.ui.page.user.UserProfilePage
 import com.huanchengfly.tieba.post.ui.page.user.followlist.FollowListPage
+import com.huanchengfly.tieba.post.ui.page.user.followlist.FansListPage
 import com.huanchengfly.tieba.post.ui.page.webview.WebViewPage
 import com.huanchengfly.tieba.post.ui.page.welcome.WelcomeScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.LocalVideoPreviewState
@@ -104,9 +104,7 @@ private fun SharedTransitionScope.buildRootNavGraph(
     startDestination: Destination,
 ): NavGraph {
     return navController.createGraph(startDestination) {
-        animatedComposable<Destination.Main>(
-            popEnterTransition = { fadeIn(animationSpec = NavTransitions.defaultAnimationSpec()) }
-        ) {
+        animatedComposable<Destination.Main> {
             MainPage(navController)
         }
 
@@ -206,10 +204,15 @@ private fun SharedTransitionScope.buildRootNavGraph(
             FollowListPage(uid = params.uid, navController)
         }
 
+        animatedComposable<Destination.UserFansList> { backStackEntry ->
+            val params = backStackEntry.toRoute<Destination.UserFansList>()
+            FansListPage(uid = params.uid, navController)
+        }
+
         animatedComposable<Destination.UserProfile> { backStackEntry ->
             backStackEntry.toRoute<Destination.UserProfile>().run {
                 CompositionLocalProvider(LocalVideoPreviewState provides null) {
-                    UserProfilePage(uid, avatar, nickname, username, transitionKey, navController)
+                    UserProfilePage(uid, avatar, nickname, username, transitionKey, navController, showPostsTab)
                 }
             }
         }

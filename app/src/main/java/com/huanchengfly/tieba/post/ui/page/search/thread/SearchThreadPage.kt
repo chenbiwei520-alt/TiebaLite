@@ -1,12 +1,11 @@
 package com.huanchengfly.tieba.post.ui.page.search.thread
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,7 +16,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.api.models.SearchThreadBean.ForumInfo
 import com.huanchengfly.tieba.post.arch.collectCommonUiEventWithLifecycle
 import com.huanchengfly.tieba.post.navigateDebounced
+import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.ui.models.search.SearchThreadInfo
+import com.huanchengfly.tieba.post.ui.widgets.compose.ListItemCard
 import com.huanchengfly.tieba.post.ui.page.Destination.Forum
 import com.huanchengfly.tieba.post.ui.page.Destination.Thread
 import com.huanchengfly.tieba.post.ui.page.Destination.UserProfile
@@ -81,7 +82,8 @@ fun SearchThreadPage(
             SwipeUpLazyLoadColumn(
                 modifier = modifier.fillMaxSize(),
                 state = listState,
-                contentPadding = contentPadding,
+                contentPadding = contentPadding + PaddingValues(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 isLoading = isLoadingMore,
                 onLoad = onLazyLoad,
                 onLazyLoad = onLazyLoad.takeIf { uiState.hasMore },
@@ -89,20 +91,21 @@ fun SearchThreadPage(
                     LoadMoreIndicator(noMore = !uiState.hasMore, onThreshold = it)
                 }
             ) {
-                itemsIndexed(uiState.data, key = { _, it -> it.lazyListKey }) { index, item ->
-                    if (index > 0) {
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                itemsIndexed(uiState.data, key = { _, it -> it.lazyListKey }) { _, item ->
+                    // The app's own Card is only a padded Column with no surface, so the search
+                    // results rendered flat. Wrapping it in ListItemCard gives them the same Miuix
+                    // surface, corner radius and spacing as the feed cards.
+                    ListItemCard {
+                        SearchThreadItem(
+                            item = item,
+                            onClick = threadClickListener,
+                            onValidUserClick = {
+                                val transitionKey = item.lazyListKey.toString()
+                                navigator.navigateDebounced(UserProfile(user = item.author, transitionKey))
+                            },
+                            onForumClick = forumClickListener
+                        )
                     }
-
-                    SearchThreadItem(
-                        item = item,
-                        onClick = threadClickListener,
-                        onValidUserClick = {
-                            val transitionKey = item.lazyListKey.toString()
-                            navigator.navigateDebounced(UserProfile(user = item.author, transitionKey))
-                        },
-                        onForumClick = forumClickListener
-                    )
                 }
             }
         }

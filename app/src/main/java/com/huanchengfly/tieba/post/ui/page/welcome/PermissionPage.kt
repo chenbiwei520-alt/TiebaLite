@@ -49,11 +49,11 @@ private fun SegmentedPrefsScope.permissionPreference(
     info: PermissionInfo,
     onRequest: (PermissionInfo) -> Unit
 ) {
-    customPreference { shapes ->
+    customPreference { position ->
         SegmentedPreference(
             title = info.name,
             summary = info.description,
-            shapes = shapes,
+            position = position,
             leadingIcon = info.icon,
             trailingContent = {
                 Text(

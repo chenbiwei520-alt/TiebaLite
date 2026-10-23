@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.foundation.MutatorMutex
@@ -11,13 +10,12 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +42,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import com.huanchengfly.tieba.post.ui.widgets.compose.states.MiuixLoadingIndicator
 import com.huanchengfly.tieba.post.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -116,13 +116,19 @@ fun SwipeUpLazyLoadColumn(
 
             if (onLazyLoad != null) {
                 item(key = LoadMoreContentType, contentType = LoadMoreContentType) {
-                    LoadingIndicator(
+                    // Was Material3's LoadingIndicator (the M3 Expressive blob). Miuix's ring
+                    // replaces it; the visibility observer that fires onLazyLoad stays as-is.
+                    Box(
                         modifier = Modifier
                             .onVisibilityChanged(minDurationMs = 300) { visible ->
                                 if (visible && !isLoading && state.layoutInfo.visibleItemsInfo.size > 1) onLazyLoad()
                             }
-                            .padding(vertical = 8.dp)
-                    )
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        MiuixLoadingIndicator(modifier = Modifier.size(24.dp))
+                    }
                 }
             }
         }
@@ -139,6 +145,8 @@ fun SwipeUpLazyLoadColumn(
                 contentAlignment = Alignment.Center
             ) {
                 val onThreshold by remember { derivedStateOf { refreshState.progress >= 1.0f } }
+                // Loading feedback itself lives in the list item above (the Miuix ring), so this
+                // overlay only carries the pull/hint state — one indicator at a time.
                 if (!isLoading) {
                     bottomIndicator(onThreshold)
                 }
@@ -298,29 +306,33 @@ private fun rememberSwipeUpRefreshConnection(
 
 @NonRestartableComposable
 @Composable
-private fun TextIndicator(modifier: Modifier = Modifier, indicatorText: String) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center
+private fun TextIndicator(
+    modifier: Modifier = Modifier,
+    indicatorText: String,
+    loading: Boolean = false,
+) {
+    // MIUI 底部加载样式：发丝分割线 + Miuix 环形指示器 + 辅助文字。
+    // 旧的「两条 2dp 粗线夹文字」换成了 Miuix 环；`loading` 时环必现（原来加载中什么都不显示）。
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        HorizontalDivider(modifier = Modifier.align(Alignment.TopStart))
+        HorizontalDivider(modifier = Modifier.weight(1f))
 
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 2.dp)
-
-            Text(
-                text = indicatorText,
-                modifier = Modifier
-                    .animateContentSize(animationSpec = MaterialTheme.motionScheme.fastSpatialSpec()),
-                style = MaterialTheme.typography.bodyLarge
-            )
-
-            HorizontalDivider(modifier = Modifier.weight(1f), thickness = 2.dp)
+        if (loading) {
+            MiuixLoadingIndicator(modifier = Modifier.size(24.dp))
         }
+
+        Text(
+            text = indicatorText,
+            style = MiuixTheme.textStyles.body2,
+            color = MiuixTheme.colorScheme.onBackgroundVariant
+        )
+
+        HorizontalDivider(modifier = Modifier.weight(1f))
     }
 }
 
@@ -332,6 +344,7 @@ fun LoadMoreIndicator(
 ) {
     TextIndicator(
         modifier = modifier.fillMaxWidth(),
+        loading = !noMore,
         indicatorText = stringResource(
             id = when {
                 onThreshold -> R.string.release_to_load

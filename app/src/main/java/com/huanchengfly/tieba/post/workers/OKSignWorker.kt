@@ -131,6 +131,21 @@ class OKSignWorker @AssistedInject constructor(
          * */
         private const val NOTIFICATION_ID_M_SIGN_FAILED = 16
 
+        /** First id of the per-forum "this forum failed to sign" notifications. */
+        private const val NOTIFICATION_ID_PER_FORUM_FAILED_BASE = 0x1000
+
+        /**
+         * Notification id of a failed forum's own notification.
+         *
+         * Each failed forum needs its own id: the progress notification is rewritten for every forum
+         * (success or failure), so a failure reported only there was gone as soon as the next forum
+         * reported, and the closing summary counts successes alone. The id is derived from the forum
+         * name so it is stable — a later run replaces its own failure instead of stacking a second
+         * copy next to it — and it can never collide with the fixed ids above.
+         */
+        private fun forumFailureNotificationId(forum: String): Int =
+            NOTIFICATION_ID_PER_FORUM_FAILED_BASE + (forum.hashCode() and 0xFFF)
+
         fun startDelayed(workManager: WorkManager, hourOfDay: Int, minute: Int) {
             val duration = DateTimeUtils.calculateNextDayDurationMills(hourOfDay, minute) / 1000
             val request = OneTimeWorkRequestBuilder<OKSignWorker>()
@@ -237,6 +252,19 @@ class OKSignWorker @AssistedInject constructor(
                 if (NotificationUtils.checkPermission(context)) {
                     val content = context.getString(R.string.text_singing_progress_fail, forum, error)
                     updateProgressNotification(progress = progress + 1, content = content)
+                    // …and keep a readable copy of the failure: the line above is replaced by the next
+                    // forum's result within a second or two, and the closing summary only counts the
+                    // successes, so the reason a forum failed was lost. Its own dismissable
+                    // notification survives the run.
+                    NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
+                        .setContentTitle(context.getString(R.string.title_oksign_fail))
+                        .setContentText(content)
+                        .setSubText(context.getString(R.string.title_oksign))
+                        .setSmallIcon(R.drawable.ic_round_warning)
+                        .setStyle(NotificationCompat.BigTextStyle())
+                        .setAutoCancel(true)
+                        .build()
+                        .let { notificationManager.notify(forumFailureNotificationId(forum), it) }
                 }
                 onProgress(progress + 1, total)
             }

@@ -24,11 +24,15 @@ import com.huanchengfly.tieba.post.components.coil.TbImageLoaderFactory
 import com.huanchengfly.tieba.post.di.RepositoryEntryPoint
 import com.huanchengfly.tieba.post.repository.user.SettingsRepository
 import com.huanchengfly.tieba.post.utils.EmoticonManager
+import com.huanchengfly.tieba.post.ui.models.settings.DarkPreference
 import com.huanchengfly.tieba.post.utils.ImageCacheUtil
+import com.huanchengfly.tieba.post.utils.TiebaLog
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
@@ -84,6 +88,9 @@ class App : Application(), Configuration.Provider {
         if (processName?.endsWith("error_handler") == true) return
 
         setupUncaughtExceptionHandler(this)
+        // 一启动就开始收运行日志（环形缓冲，最多 4000 行）：用户复现完问题回去就能导出，
+        // 不必先打开日志页再回来重来一遍。
+        TiebaLog.start()
         configInit.init()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             if (processName != null && packageName != processName) { //判断不等于默认进程名称
@@ -92,6 +99,22 @@ class App : Application(), Configuration.Provider {
         }
         SingletonImageLoader.setSafe(TbImageLoaderFactory())
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM)
+        // Apply the user dark preference to the activity config so status bars, Material
+        // components and the Miuix ThemeController all follow the selected dark/light mode
+        AppBackgroundScope.launch {
+            settingRepository.uiSettings
+                .map { it.darkPreference }
+                .distinctUntilChanged()
+                .collect { preference ->
+                    AppCompatDelegate.setDefaultNightMode(
+                        when (preference) {
+                            DarkPreference.FOLLOW_SYSTEM -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                            DarkPreference.ALWAYS -> AppCompatDelegate.MODE_NIGHT_YES
+                            DarkPreference.DISABLED -> AppCompatDelegate.MODE_NIGHT_NO
+                        }
+                    )
+                }
+        }
         EmoticonManager.init(this)
         if (BuildConfig.DEBUG) {
             // Enable verbose Compose stack traces for local debugging
@@ -182,6 +205,9 @@ class App : Application(), Configuration.Provider {
         private fun setupUncaughtExceptionHandler(context: Context) {
             val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { t, e ->
+                // 进程马上要没了，先把日志尾巴落到缓存目录，下次能在日志页里取到。
+                TiebaLog.e("Crash", t.name + " 未捕获异常", e)
+                TiebaLog.dumpCrashSync(context, e)
                 context.goToActivity<CrashActivity> {
                     // Note: Do not serialize Throwable
                     putExtra(CrashActivity.KEY_THROWABLE, e.stackTraceToString())

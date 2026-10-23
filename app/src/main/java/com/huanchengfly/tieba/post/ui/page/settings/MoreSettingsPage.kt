@@ -9,8 +9,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItemShapes
-import androidx.compose.material3.SnackbarDuration
+import com.huanchengfly.tieba.post.ui.widgets.compose.preference.PreferenceGroupPosition
+import top.yukonga.miuix.kmp.basic.SnackbarDuration
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,18 +34,27 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.preference.SegmentedPrefer
 import com.huanchengfly.tieba.post.ui.widgets.compose.preference.preference
 import com.huanchengfly.tieba.post.utils.ImageCacheUtil
 import com.huanchengfly.tieba.post.utils.buildAppSettingsIntent
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.File
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @SuppressLint("WebViewApiAvailability")
 @Composable
-fun MoreSettingsPage(navigator: NavController) {
+fun MoreSettingsPage(
+    navigator: NavController,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
+    /** 面板模式下由外层接管子页（平板两栏不跳转）；为 null 时保持原来的页面跳转。 */
+    onOpenWorkInfo: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
 
     SettingsScaffold(
         titleRes = R.string.title_settings_more,
         onBack = navigator::navigateUp,
+        paneMode = paneMode,
     ) {
         group(title = R.string.summary_settings_more) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -69,23 +78,33 @@ fun MoreSettingsPage(navigator: NavController) {
 
             preference(
                 title = R.string.title_settings_worker,
-                onClick = {
+                onClick = onOpenWorkInfo ?: {
                     navigator.navigate(route = SettingsDestination.WorkInfo)
                 },
                 leadingIcon = Icons.Outlined.Analytics,
+            )
+
+            // 运行日志：手机与平板都跳到独立页面（同一条导航图，两栏布局下也是整页覆盖）。
+            preference(
+                title = R.string.title_settings_log,
+                summary = R.string.summary_settings_log,
+                onClick = {
+                    navigator.navigate(route = SettingsDestination.LogViewer)
+                },
+                leadingIcon = MiuixIcons.File,
             )
         }
 
         group(title = R.string.settings_group_cache) {
             customPreference {
-                ImageCachePreference(shapes = it)
+                ImageCachePreference(position = it)
             }
         }
     }
 }
 
 @Composable
-private fun ImageCachePreference(modifier: Modifier = Modifier, shapes: ListItemShapes) {
+private fun ImageCachePreference(modifier: Modifier = Modifier, position: PreferenceGroupPosition) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = LocalSnackbarHostState.current
@@ -105,7 +124,7 @@ private fun ImageCachePreference(modifier: Modifier = Modifier, shapes: ListItem
     SegmentedPreference(
         modifier = modifier,
         title = stringResource(id = R.string.title_clear_picture_cache),
-        shapes = shapes,
+        position = position,
         leadingIcon = Icons.Rounded.DeleteForever,
         summary = cacheSize ?: stringResource(id = R.string.text_loading),
         onClick = {
@@ -124,7 +143,7 @@ private fun ImageCachePreference(modifier: Modifier = Modifier, shapes: ListItem
                         diskCacheJob = null
                         cacheSize = context.getString(R.string.tip_cache, "0B")
                         coroutineScope.launch {
-                            snackbarHostState.currentSnackbarData?.dismiss()
+                            snackbarHostState.newestSnackbarData()?.dismiss()
                             delay(300)
                             snackbarHostState.showSnackbar(context.getString(R.string.toast_clear_picture_cache_success))
                         }

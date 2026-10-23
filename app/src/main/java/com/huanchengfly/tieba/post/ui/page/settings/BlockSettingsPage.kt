@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post.ui.page.settings
 
-import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -15,25 +14,18 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.HideSource
 import androidx.compose.material.icons.outlined.NoAccounts
+import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.SaveAs
 import androidx.compose.material.icons.outlined.VideocamOff
-import androidx.compose.material.icons.sharp.Restore
-import androidx.compose.material.icons.sharp.SaveAs
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ButtonGroupDefaults
-import androidx.compose.material3.ButtonShapes
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,7 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
-import androidx.compose.ui.util.fastForEachIndexed
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -81,11 +72,35 @@ import java.util.Locale
 fun BlockSettingsPage(
     settings: Settings<BlockSettings>,
     navigator: NavController,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
+    /** 面板模式下由外层接管二级页（平板两栏不跳转）；为 null 时保持原来的页面跳转。 */
+    onOpenForumBlockList: (() -> Unit)? = null,
+    onOpenUserBlockList: (() -> Unit)? = null,
+    onOpenKeywordBlockList: (() -> Unit)? = null,
     viewModel: BlockSettingsViewModel = hiltViewModel(),
 ) {
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = rememberSnackbarHostState()
     val blockRuleDialogState = rememberDialogState()
+
+    // Backup/restore are ordinary preferences in the block-rule group now, so the two document
+    // pickers live on the page instead of inside a dedicated button component.
+    var backupSaveTimestamp by rememberSaveable { mutableLongStateOf(0) }
+    val backupLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/*")
+    ) { uri ->
+        if (uri != null) viewModel.onBackup(uri, backupSaveTimestamp)
+        backupSaveTimestamp = 0
+    }
+    val restoreLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            viewModel.onRestoreFilePicked(uri)
+            blockRuleDialogState.show()
+        }
+    }
 
     viewModel.uiEvent.collectUiEventWithLifecycle {
         val message = when (it) {
@@ -103,6 +118,7 @@ fun BlockSettingsPage(
     SettingsScaffold(
         titleRes = R.string.title_block_settings,
         onBack = navigator::navigateUp,
+        paneMode = paneMode,
         settings = settings,
         initialValue = BlockSettings(),
         snackbarHostState = snackbarHostState,
@@ -128,7 +144,7 @@ fun BlockSettingsPage(
                 title = R.string.settings_block_forum,
                 leadingIcon = Icons.Outlined.Forum,
                 trailingIcon = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                onClick = {
+                onClick = onOpenForumBlockList ?: {
                     navigator.navigate(route = SettingsDestination.ForumBlockList)
                 }
             )
@@ -137,7 +153,7 @@ fun BlockSettingsPage(
                 title = R.string.settings_block_user,
                 leadingIcon = Icons.Outlined.NoAccounts,
                 trailingIcon = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                onClick = {
+                onClick = onOpenUserBlockList ?: {
                     navigator.navigate(route = SettingsDestination.UserBlockList)
                 }
             )
@@ -146,21 +162,32 @@ fun BlockSettingsPage(
                 title = R.string.settings_block_keyword,
                 leadingIcon = Icons.Outlined.Block,
                 trailingIcon = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                onClick = {
+                onClick = onOpenKeywordBlockList ?: {
                     navigator.navigate(route = SettingsDestination.KeywordBlockList)
                 }
             )
 
-            customPreference {
-                BlockRuleBackupPreference(
-                    modifier = Modifier.padding(top = 2.dp),
-                    onBackup = viewModel::onBackup,
-                    onRestore = { uri ->
-                        viewModel.onRestoreFilePicked(uri)
-                        blockRuleDialogState.show()
-                    },
-                )
-            }
+            // Backup/restore read as two more rows of this same card rather than a pair of filled
+            // buttons: they are the same kind of "open a picker" action as the three rows above, and
+            // the blue pair broke the group card's rhythm (and its light/dark balance).
+            preference(
+                title = R.string.button_backup,
+                leadingIcon = Icons.Outlined.SaveAs,
+                trailingIcon = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                onClick = {
+                    Date().let { date ->
+                        backupSaveTimestamp = date.time
+                        backupLauncher.launch(BlockRuleBackupUtil.getBackupFileName(date))
+                    }
+                }
+            )
+
+            preference(
+                title = R.string.button_restore,
+                leadingIcon = Icons.Outlined.Restore,
+                trailingIcon = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                onClick = { restoreLauncher.launch(arrayOf("*/*")) }
+            )
         }
     }
 
@@ -182,74 +209,6 @@ fun BlockSettingsPage(
                 )
             }
         }
-}
-
-@Composable
-private fun BlockRuleBackupPreference(
-    modifier: Modifier = Modifier,
-    onBackup: (uri: Uri, saveTimestamp: Long) -> Unit,
-    onRestore: (Uri) -> Unit,
-) {
-    var saveTimestamp by rememberSaveable { mutableLongStateOf(0) }
-    val saveLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/*")
-    ) { uri ->
-        if (uri != null) onBackup(uri, saveTimestamp)
-        saveTimestamp = 0
-    }
-
-    val restoreLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) onRestore(uri)
-    }
-
-    val options = listOf(
-        R.string.button_backup to Icons.Sharp.SaveAs,
-        R.string.button_restore to Icons.Sharp.Restore,
-    )
-
-    val shapes = remember {
-        val shape = ShapeDefaults.ExtraSmall
-        val overrideCorner = ShapeDefaults.Large.bottomStart
-        listOf(
-            ButtonShapes(shape = shape.copy(bottomStart = overrideCorner), pressedShape = shape),
-            ButtonShapes(shape = shape.copy(bottomEnd = overrideCorner), pressedShape = shape)
-        )
-    }
-
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-    ) {
-        options.fastForEachIndexed { index, (label, icon) ->
-            Button(
-                onClick = {
-                    when (label) {
-                        R.string.button_backup -> Date().let { date ->
-                            saveTimestamp = date.time
-                            val name = BlockRuleBackupUtil.getBackupFileName(date)
-                            saveLauncher.launch(name)
-                        }
-
-                        R.string.button_restore -> restoreLauncher.launch(arrayOf("*/*"))
-                    }
-                },
-                modifier = Modifier.weight(1.0f),
-                shapes = shapes[index],
-                contentPadding = ButtonDefaults.MediumContentPadding,
-            ) {
-                Icon(icon, contentDescription = null)
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Text(
-                    text = stringResource(label),
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-        }
-    }
 }
 
 // title stringRes, rule count, checked state

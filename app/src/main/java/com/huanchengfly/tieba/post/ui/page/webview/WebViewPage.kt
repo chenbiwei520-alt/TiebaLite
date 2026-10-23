@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -187,6 +189,8 @@ fun WebViewPage(initialUrl: String, customClient: Boolean, navigator: NavControl
                         TextMenuItem(text = R.string.title_refresh, onClick = webViewNavigator::reload)
                     },
                     triggerShape = CircleShape,
+                    triggerIcon = Icons.Rounded.MoreVert,
+                    triggerContentDescription = stringResource(id = R.string.btn_more),
                     content = MoreMenuItem
                 )
             }

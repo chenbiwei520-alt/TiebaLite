@@ -13,8 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.IconButtonColors
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +58,8 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.CONTROLS_VISIBILITY_TIMEOUT_MS
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.LocalPlayerGestureState
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Info
 
 // Video format and Audio format
 private typealias MediaFormats = Pair<Format, Format?>
@@ -88,7 +88,7 @@ fun MediaFormatsButton(
     var mediaSize by remember { mutableLongStateOf(-1) }
 
     ActionItem(
-        icon = Icons.Rounded.Info,
+        icon = MiuixIcons.Info,
         modifier = modifier,
         contentDescription = stringResource(R.string.title_media_info),
         colors = colors,

@@ -2,6 +2,9 @@ package com.huanchengfly.tieba.post.ui.widgets.compose
 
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -16,7 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -24,9 +26,11 @@ import androidx.compose.material.icons.rounded.VerticalAlignTop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonMenuItem
+import androidx.compose.material3.FloatingActionButtonMenuScope
+import top.yukonga.miuix.kmp.basic.FloatingActionButton
+import top.yukonga.miuix.kmp.basic.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -34,8 +38,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.ToggleFloatingActionButton
-import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider
@@ -73,6 +75,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.theme.LikeRed
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+
 
 /**
  * Represents the container color for this button, depending on [enabled].
@@ -163,8 +171,9 @@ fun FavoriteButton(
             .padding(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // 点亮就是红的（固定色），不跟主题色走，否则在蓝色主题下点亮的爱心是蓝的。
         val animatedColor by animateColorAsState(
-            targetValue = if (favorite) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+            targetValue = if (favorite) LikeRed else LocalContentColor.current,
         )
 
         ProvideContentColor(animatedColor) {
@@ -247,7 +256,9 @@ fun OutlinedIconTextButton(
 fun DefaultBackToTopFAB(
     modifier: Modifier = Modifier,
     visible: Boolean,
-    size: Dp = ExtendedFabHeight,
+    // Miuix spec (decoded from miuix-ui): CircleShape + containerColor = primary + 60.dp minimum
+    // + 4.dp shadow. The old default was Material's 56.dp ExtendedFabHeight.
+    size: Dp = FloatingActionButtonDefaults.MinHeight,
     onClick: () -> Unit,
 ) {
     TooltipBox(
@@ -281,32 +292,64 @@ fun DefaultToggleFloatingActionButton(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    contentDescription: String? = null,
     focusRequester: FocusRequester = remember { FocusRequester() }
 ) {
-    ToggleFloatingActionButton(
+    // miuix spec (decoded from miuix-ui FloatingActionButton.kt): CircleShape + containerColor = primary
+    // + 60.dp minimum. Material3 的 ToggleFloatingActionButton 默认是 16.dp 圆角的方块、
+    // 配色跟随 MaterialTheme.primaryContainer（本项目的蓝色方块），和全 app 其它 FAB 不一致。
+    val checkedProgress by animateFloatAsState(
+        targetValue = if (checked) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow),
+        label = "fabToggleProgress",
+    )
+    FloatingActionButton(
+        onClick = { onCheckedChange(!checked) },
         modifier = modifier
             .semantics {
                 traversalIndex = -1f
             }
             .focusRequester(focusRequester)
             .focusable(),
-        checked = checked,
-        onCheckedChange = onCheckedChange,
     ) {
-        Box(
-            Modifier.animateIcon({ checkedProgress })
-        ) {
-            Icon(
-                painter = rememberVectorPainter(Icons.Filled.Add),
-                contentDescription = null,
-                modifier = Modifier.graphicsLayer {
-                    rotationZ = checkedProgress * 45
-                    scaleX = lerp(1f, 1.25f, checkedProgress)
-                    scaleY = scaleX
-                },
-            )
-        }
+        Icon(
+            painter = rememberVectorPainter(MiuixIcons.Add),
+            contentDescription = contentDescription,
+            tint = MiuixTheme.colorScheme.onPrimary,
+            modifier = Modifier.graphicsLayer {
+                // + 号旋转 45° 收成 ×，同时放大一点，展开/收起共用同一条 spring 进度。
+                rotationZ = checkedProgress * 45f
+                scaleX = lerp(1f, 1.25f, checkedProgress)
+                scaleY = scaleX
+            },
+        )
     }
+}
+
+/**
+ * [FloatingActionButtonMenuItem] 的默认配色版本。
+ *
+ * 菜单项默认走 Material3 的 `ToggleFloatingActionButtonDefaults.containerColor(checked = false)`
+ * （secondaryContainer，本项目里是一枚比 FAB 更浅的蓝），和旁边的 miuix FAB 不是同一套配色。
+ * 这里统一成 miuix 的 primary / onPrimary，和 [DefaultToggleFloatingActionButton] 同色。
+ */
+@ExperimentalMaterial3Api
+@NonRestartableComposable
+@Composable
+fun FloatingActionButtonMenuScope.DefaultFloatingActionButtonMenuItem(
+    onClick: () -> Unit,
+    icon: @Composable () -> Unit,
+    text: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FloatingActionButtonMenuItem(
+        onClick = onClick,
+        icon = icon,
+        text = text,
+        modifier = modifier,
+        containerColor = MiuixTheme.colorScheme.primary,
+        contentColor = MiuixTheme.colorScheme.onPrimary,
+    )
 }
 
 @Composable
@@ -328,7 +371,7 @@ fun DeleteIconButton(
         )
     ) {
         if (deleting) {
-            CircularProgressIndicator(modifier = Modifier.size(Sizes.Tiny))
+            CircularProgressIndicator(size = Sizes.Tiny)
         } else {
             Icon(
                 imageVector = Icons.Rounded.DeleteForever,

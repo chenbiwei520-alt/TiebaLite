@@ -6,12 +6,10 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
@@ -19,6 +17,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import top.yukonga.miuix.kmp.squircle.squircleSurface
 import kotlin.math.roundToInt
 
 private const val TAG = "UniversalScrollBox"
@@ -105,8 +105,11 @@ fun UniversalScrollBox(
                         .fillMaxHeight()
                         .offset { IntOffset(dragOffset.width.roundToInt(), 0) }
                         .width(barSize.width.dp)
-                        .clip(RoundedCornerShape(4.dp)) // 注意先 clip 再 background
-                        .background(scrollBarColor) // 注意先 offset 再 background
+                        // 注意先 clip 再 background —— squircleSurface 就是这个顺序（填充 + 裁剪）
+                        .squircleSurface(
+                            color = scrollBarColor,
+                            cornerRadius = SquircleCornerRadius.ExtraSmall,
+                        )
                         .draggable(state = rememberDraggableState {
                             var widthOffset = dragOffset.width
                             widthOffset += it
@@ -138,8 +141,10 @@ fun UniversalScrollBox(
                         .fillMaxWidth()
                         .offset { IntOffset(0, dragOffset.height.roundToInt()) }
                         .height(barSize.height.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(scrollBarColor)
+                        .squircleSurface(
+                            color = scrollBarColor,
+                            cornerRadius = SquircleCornerRadius.ExtraSmall,
+                        )
                         .draggable(state = rememberDraggableState {
                             var heightOffset = dragOffset.height
                             heightOffset += it

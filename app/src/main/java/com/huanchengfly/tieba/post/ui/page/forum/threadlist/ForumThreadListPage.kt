@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post.ui.page.forum.threadlist
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxScope
@@ -13,7 +12,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,7 +29,7 @@ import com.huanchengfly.tieba.post.arch.collectCommonUiEventWithLifecycle
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.navigateDebounced
-import com.huanchengfly.tieba.post.ui.common.theme.compose.onCase
+import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.ui.models.ThreadItem
 import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.Destination.ForumRuleDetail
@@ -43,13 +41,22 @@ import com.huanchengfly.tieba.post.ui.page.main.explore.ThreadClickListeners
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
+import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.squircle.squircleBackground
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadContentType
-import com.huanchengfly.tieba.post.ui.widgets.compose.cardBottomDivider
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import java.util.Objects
+
+/**
+ * Extra top inset for the thread list so its first card does not touch the tab row above it: the
+ * scaffold padding alone only reserves the top bar's own height.
+ */
+internal val ForumListTopSpacing = 12.dp
 
 @Composable
 private fun TopThreadItem(
@@ -60,18 +67,24 @@ private fun TopThreadItem(
 ) {
     Row(
         modifier = modifier
+            // Card hosts content in a Column, which gives children minWidth = 0; without this the
+            // row would shrink to its intrinsic width inside the card.
+            .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MiuixTheme.colorScheme.onPrimary,
             text = type,
             modifier = Modifier
-                .background(
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                    shape = MaterialTheme.shapes.extraSmall
+                // Miuix accent blue, and the same squircle corner geometry the surrounding Card
+                // uses (Sizes.CornerRadius) so the chip's curvature matches the card it
+                // sits inside instead of clashing with it.
+                .squircleBackground(
+                    color = MiuixTheme.colorScheme.primary,
+                    cornerRadius = Sizes.CornerRadius,
                 )
                 .padding(horizontal = 16.dp, vertical = 4.dp),
             style = MaterialTheme.typography.labelSmall
@@ -160,7 +173,14 @@ fun ForumThreadList(
             SwipeUpLazyLoadColumn(
                 modifier = modifier.fillMaxSize(),
                 state = listState,
-                contentPadding = contentPadding,
+                // The scaffold padding only accounts for the top bar's height, so without this extra
+                // top inset the first card butts straight up against the tab row.
+                contentPadding = contentPadding + PaddingValues(
+                    start = 16.dp,
+                    top = ForumListTopSpacing,
+                    end = 16.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
                 isLoading = uiState.isLoadingMore,
                 onLoad = viewModel::loadMore,
                 onLazyLoad = viewModel::loadMore.takeIf { uiState.hasMore },
@@ -171,12 +191,14 @@ fun ForumThreadList(
                 forumRuleTitle?.let { rule ->
                     if (rule.isEmpty()) return@let
                     item(key = "ForumRule") {
-                        TopThreadItem(
-                            title = rule,
-                            onClick = { navigator.navigateDebounced(ForumRuleDetail(forumId)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            type = stringResource(id = R.string.desc_forum_rule)
-                        )
+                        // Same Miuix group card as the feed items below
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            TopThreadItem(
+                                title = rule,
+                                onClick = { navigator.navigateDebounced(ForumRuleDetail(forumId)) },
+                                type = stringResource(id = R.string.desc_forum_rule)
+                            )
+                        }
                     }
                 }
 
@@ -202,32 +224,35 @@ fun LazyListScope.forumThreadList(
     onOriginThreadClicked: (OriginThreadInfo) -> Unit = {},
     hideBlocked: Boolean = false,
 ) {
-    itemsIndexed(threads, key = { _, it -> it.id }, ThreadContentType) { index, thread ->
+    itemsIndexed(threads, key = { _, it -> it.id }, ThreadContentType) { _, thread ->
         // Top threads are non-blockable
         if (thread.isTop) {
-            TopThreadItem(
-                modifier = Modifier.onCase(threads.getOrNull(index + 1)?.isTop != true) {
-                    // Add bottom divider and padding on the last top thread
-                    cardBottomDivider(DividerDefaults.color).padding(bottom = 8.dp)
-                },
-                title = thread.title,
-                onClick = { threadClickListeners.onClicked(thread) }
-            )
+            // Same Miuix group card as the feed items below, so pinned threads read as part of the
+            // list instead of floating above it. The trailing divider that used to separate the two
+            // groups is gone: the card boundary already does that job.
+            Card(modifier = Modifier.fillMaxWidth()) {
+                TopThreadItem(
+                    title = thread.title,
+                    onClick = { threadClickListeners.onClicked(thread) }
+                )
+            }
         } else {
             BlockableContent(
                 blocked = thread.blocked,
                 blockedTip = ThreadBlockedTip,
                 hideBlockedContent = hideBlocked
             ) {
-                FeedCard(
-                    thread = thread,
-                    onClick = threadClickListeners.onClicked,
-                    onLike = onLikeClicked,
-                    onClickReply = threadClickListeners.onReplyClicked,
-                    onClickUser = threadClickListeners.onAuthorClicked,
-                    cardDivider = true,
-                    onClickOriginThread = onOriginThreadClicked,
-                )
+                // One Miuix group card per feed item, no divider lines
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    FeedCard(
+                        thread = thread,
+                        onClick = threadClickListeners.onClicked,
+                        onLike = onLikeClicked,
+                        onClickReply = threadClickListeners.onReplyClicked,
+                        onClickUser = threadClickListeners.onAuthorClicked,
+                        onClickOriginThread = onOriginThreadClicked,
+                    )
+                }
             }
         }
     }

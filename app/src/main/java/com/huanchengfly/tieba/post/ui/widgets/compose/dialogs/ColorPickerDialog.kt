@@ -11,11 +11,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,7 +27,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,9 +43,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
-import com.godaddy.android.colorpicker.HsvColor
-import com.godaddy.android.colorpicker.harmony.ColorHarmonyMode
-import com.godaddy.android.colorpicker.harmony.HarmonyColorPicker
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.isWindowHeightCompact
@@ -56,9 +50,10 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.NegativeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.PositiveButton
-import com.huanchengfly.tieba.post.ui.widgets.compose.RoundedSlider
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.utils.extension.toHexString
+import top.yukonga.miuix.kmp.basic.ColorPalette
+import top.yukonga.miuix.kmp.basic.ColorPicker
 
 @Composable
 fun ColorPickerDialog(
@@ -68,8 +63,7 @@ fun ColorPickerDialog(
     onColorChanged: (Color) -> Unit,
     extraContent: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    var color by remember { mutableStateOf(HsvColor.from(initial)) }
-    val androidColor by remember { derivedStateOf { color.toColor() } }
+    var color by remember { mutableStateOf(initial) }
     val isHeightCompat = isWindowHeightCompact()
 
     Dialog(
@@ -93,7 +87,7 @@ fun ColorPickerDialog(
                 PositiveButton(
                     text = stringResource(id = R.string.button_finish),
                     onClick = {
-                        onColorChanged(androidColor); dismiss()
+                        onColorChanged(color); dismiss()
                     }
                 )
             }
@@ -109,30 +103,28 @@ fun ColorPickerDialog(
             val isKeyboardOpen by rememberUpdatedState(WindowInsets.ime.getBottom(density) > 0)
             // Hide picker to make room for soft keyboard
             if (!isKeyboardOpen && !isHeightCompat) {
-                HarmonyColorPicker(
-                    harmonyMode = ColorHarmonyMode.ANALOGOUS,
+                // HyperOS style pickers (Miuix ColorPalette + ColorPicker)
+                ColorPalette(
                     color = color,
                     onColorChanged = { color = it },
-                    showBrightnessBar = false,
+                    showPreview = false,
                     modifier = Modifier
-                        .sizeIn(maxWidth = 280.dp, maxHeight = 280.dp)
-                        .align(Alignment.CenterHorizontally)
+                        .fillMaxWidth()
+                        .padding(start = 8.dp, end = 8.dp, bottom = 12.dp),
                 )
 
-                Row(
-                    modifier = paddingModifier.height(24.dp)
-                ) {
-                    Text(text = stringResource(R.string.brightness))
-                    RoundedSlider(
-                        value = color.value,
-                        onValueChange = { color = color.copy(value = it) },
-                        modifier = Modifier.padding(start = 12.dp),
-                    )
-                }
+                ColorPicker(
+                    color = color,
+                    onColorChanged = { color = it },
+                    showPreview = false,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 8.dp, end = 8.dp, bottom = 12.dp),
+                )
             }
 
-            ColorHexTextField(paddingModifier, initial = initial, color = androidColor) {
-                color = HsvColor.from(it)
+            ColorHexTextField(paddingModifier, initial = initial, color = color) {
+                color = it
             }
 
             extraContent?.invoke(this)

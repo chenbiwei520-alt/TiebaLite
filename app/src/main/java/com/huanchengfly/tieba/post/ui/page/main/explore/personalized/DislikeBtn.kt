@@ -1,121 +1,83 @@
 package com.huanchengfly.tieba.post.ui.page.main.explore.personalized
 
 import androidx.compose.foundation.LocalIndication
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
-import androidx.compose.material3.ToggleButtonShapes
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.round
 import com.huanchengfly.tieba.post.R
-import com.huanchengfly.tieba.post.ui.common.theme.compose.withNonNull
-import com.huanchengfly.tieba.post.ui.models.explore.Dislike
-import com.huanchengfly.tieba.post.ui.widgets.compose.LocalHazeState
-import com.huanchengfly.tieba.post.ui.widgets.compose.MenuScope
-import com.huanchengfly.tieba.post.ui.widgets.compose.MenuState
-import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalGrid
-import com.huanchengfly.tieba.post.ui.widgets.compose.hazeSource
-import com.huanchengfly.tieba.post.ui.widgets.compose.items
-import com.huanchengfly.tieba.post.ui.widgets.compose.rememberMenuState
-import kotlinx.coroutines.flow.filterIsInstance
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.LiquidGlassContainerMenu
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.LiquidGlassDropdownMenuItem
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.LocalLiquidGlassPopupBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.liquidGlassDropdownColors
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.OverlayListPopup
+import top.yukonga.miuix.kmp.basic.DropdownImpl
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.ListPopupColumn
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.ListPopupDefaults
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.PopupPositionProvider
 
+/**
+ * Dislike action popup.
+ *
+ * The popup is a **single-action** menu: its only entry is the "不感兴趣" submit row. The old
+ * multi-reason checklist (colour/quality/ads/…, block-user, block-forum) is gone — those toggles
+ * never changed what the submit actually sent, so the panel only added steps in front of one
+ * working action.
+ *
+ * Conforms to the Miuix dropdown spec the same way the settings pages do:
+ *
+ *  * the shell is the app's shared [OverlayListPopup] (backdrop blur + lit edge, the same pair
+ *    `LiquidGlassDropdownPreference` renders through);
+ *  * the one entry is a [DropdownImpl] row — a **direct** child of [ListPopupColumn], so upstream's
+ *    own width measurement (children forced to the panel width) and its own `selectable` click
+ *    target work exactly as designed; no wrapper hacks are needed for a single-row panel;
+ *  * `optionSize = 1` with `index = 0` gives the row the first-and-last vertical padding and fully
+ *    rounded corners; `isSelected = false` keeps the check glyph transparent, so the row reads as a
+ *    plain menu action.
+ *
+ * Clicks arrive through [DropdownImpl]'s `onSelectedIndexChange` — that is the callback its
+ * internal `selectable` actually invokes (`DropdownItem.onClick` is never wired to the row).
+ *
+ * @param onDislikeClicked submits the dislike for the current thread.
+ */
 @Composable
-fun Dislike(
-    dislikeResource: List<Dislike>,
-    selectedReasons: Set<Dislike>,
-    onDismiss: () -> Unit,
-    onDislikeSelected: (Dislike) -> Unit,
-    onDislikeClicked: () -> Unit
-) {
-    val menuState = rememberMenuState()
+fun Dislike(onDislikeClicked: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
 
-    DislikeMenu(
-        menuContent = {
-            val toggleButtonShapes = ToggleButtonShapes(
-                shape = MaterialTheme.shapes.small,
-                pressedShape = MaterialTheme.shapes.medium,
-                checkedShape = CircleShape
-            )
-            val toggleButtonColors = ToggleButtonDefaults.toggleButtonColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-            )
+    // Read the glass sampling layer HERE, in the trigger's composition: a CompositionLocal read
+    // inside the popup's content lambda resolves against the popup host's composition and comes
+    // back null (same trap `ClickMenu` / `LongClickMenu` document).
+val glassBackdrop = LocalLiquidGlassPopupBackdrop.current
 
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(id = R.string.title_dislike),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.weight(1f),
-                    )
+    // 触发区在窗口坐标系里的矩形：容器变换菜单靠它把面板摆到触发按钮下方、右缘对齐。
+    var triggerBounds by remember { mutableStateOf(Rect.Zero) }
 
-                    SubmitButton {
-                        onDislikeClicked()
-                        dismiss()
-                    }
-                }
-
-                VerticalGrid(
-                    column = 2,
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    items(
-                        items = dislikeResource,
-                        span = { if (it.id == 7) 2 else 1 }
-                    ) { dislike ->
-                        ToggleButton(
-                            modifier = Modifier.fillMaxWidth(),
-                            checked = dislike in selectedReasons,
-                            onCheckedChange = { onDislikeSelected(dislike) },
-                            shapes = toggleButtonShapes,
-                            colors = toggleButtonColors,
-                        ) {
-                            Text(text = dislike.reason, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        }
-                    }
-                }
-            }
-        },
-        menuState = menuState,
-        menuShape = MaterialTheme.shapes.small,
-        onDismiss = onDismiss
+    Box(
+        modifier = Modifier
+            .clip(CircleShape)
+            .onGloballyPositioned { triggerBounds = it.boundsInWindow() }
+            .combinedClickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = LocalIndication.current,
+                onClick = { expanded = true },
+            ),
     ) {
         Box(
             modifier = Modifier.size(40.dp/** SmallIconButtonTokens.ContainerHeight */),
@@ -126,77 +88,45 @@ fun Dislike(
                 contentDescription = stringResource(id = R.string.btn_more)
             )
         }
-    }
-}
 
-@Composable
-private fun DislikeMenu(
-    menuContent: @Composable MenuScope.() -> Unit,
-    modifier: Modifier = Modifier,
-    menuState: MenuState = rememberMenuState(),
-    menuShape: Shape = MenuDefaults.shape,
-    onDismiss: (() -> Unit)? = null,
-    content: @Composable () -> Unit,
-) {
-    val hazeState = LocalHazeState.current
-    val interactionSource = remember { MutableInteractionSource() }
-    LaunchedEffect(interactionSource) {
-        interactionSource.interactions
-            .filterIsInstance<PressInteraction.Press>()
-            .collect {
-                menuState.offset = it.pressPosition
-            }
-    }
-
-    Box(
-        modifier = Modifier
-            .clip(CircleShape)
-            .combinedClickable(
-                interactionSource = interactionSource,
-                indication = LocalIndication.current,
-                onClick = menuState::show
-            ),
-    ) {
-        content()
-        if (!menuState.expanded) return@Box
-
-        Box(
-            modifier = Modifier.offset { menuState.offset.round() }
-        ) {
-            DropdownMenu(
-                expanded = menuState.expanded,
-                onDismissRequest = {
-                    menuState.dismiss()
-                    onDismiss?.invoke()
-                },
-                modifier = modifier.withNonNull(hazeState) {
-                    Modifier.hazeSource(state, zIndex = 1f)
-                        .defaultHazeEffect()
-                        .background(color = MaterialTheme.colorScheme.background.copy(alpha = 0.74f))
-                },
-                offset = DpOffset.Zero,
-                shape = menuShape,
-                containerColor = MaterialTheme.colorScheme.background,
+        if (glassBackdrop != null) {
+            LiquidGlassContainerMenu(
+                show = expanded,
+                anchor = triggerBounds,
+                backdrop = glassBackdrop,
+                onDismiss = { expanded = false },
             ) {
-                MenuScope(menuState, onDismiss = onDismiss).menuContent()
+                LiquidGlassDropdownMenuItem(
+                    text = stringResource(id = R.string.button_submit_dislike),
+                    onClick = {
+                        onDislikeClicked()
+                        expanded = false
+                    },
+                )
+            }
+        } else {
+            OverlayListPopup(
+                show = expanded,
+                liquidGlassBackdrop = glassBackdrop,
+                alignment = PopupPositionProvider.Align.End,
+                popupPositionProvider = ListPopupDefaults.dropdownPositionProvider(horizontalMargin = 16.dp),
+                enableWindowDim = false,
+                onDismissRequest = { expanded = false },
+            ) {
+                ListPopupColumn {
+                    DropdownImpl(
+                        text = stringResource(id = R.string.button_submit_dislike),
+                        optionSize = 1,
+                        isSelected = false,
+                        index = 0,
+                        dropdownColors = liquidGlassDropdownColors(),
+                        onSelectedIndexChange = {
+                            onDislikeClicked()
+                            expanded = false
+                        },
+                    )
+                }
             }
         }
     }
-}
-
-@Composable
-private fun SubmitButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val colors = ButtonDefaults.filledTonalButtonColors()
-
-    Text(
-        text = stringResource(id = R.string.button_submit_dislike),
-        modifier = modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(color = colors.containerColor)
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp, horizontal = 10.dp),
-        color = colors.contentColor,
-        fontWeight = FontWeight.Bold,
-        style = MaterialTheme.typography.titleSmall,
-    )
 }

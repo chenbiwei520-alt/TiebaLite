@@ -18,10 +18,16 @@ import com.huanchengfly.tieba.post.utils.buildAppSettingsIntent
 import kotlinx.coroutines.launch
 
 @Composable
-fun PrivacySettingsPage(settings: Settings<PrivacySettings>, onBack: () -> Unit) {
+fun PrivacySettingsPage(
+    settings: Settings<PrivacySettings>,
+    onBack: () -> Unit,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
+) {
     SettingsScaffold(
         titleRes = R.string.title_settings_privacy,
         onBack = onBack,
+        paneMode = paneMode,
         settings = settings,
         initialValue = PrivacySettings(),
     ) {
@@ -31,14 +37,14 @@ fun PrivacySettingsPage(settings: Settings<PrivacySettings>, onBack: () -> Unit)
     }
 }
 
-fun SettingsSegmentedPrefsScope<PrivacySettings>.appLinkPreference() = customPreference { shapes ->
+fun SettingsSegmentedPrefsScope<PrivacySettings>.appLinkPreference() = customPreference { position ->
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = LocalSnackbarHostState.current
 
     SegmentedPreference(
         title = R.string.title_settings_app_link,
-        shapes = shapes,
+        position = position,
         summary = R.string.summary_app_link,
         leadingIcon = Icons.AutoMirrored.Outlined.OpenInNew,
         onClick = {

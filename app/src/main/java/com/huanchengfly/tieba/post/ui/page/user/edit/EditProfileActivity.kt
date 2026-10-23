@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imeNestedScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -23,18 +22,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Save
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuAnchorType
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -70,16 +64,24 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.NetworkImage
-import com.huanchengfly.tieba.post.ui.widgets.compose.OutlineCounterTextField
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.ThemeUtil
 import com.yalantis.ucrop.UCrop
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.collections.immutable.persistentMapOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.DropdownImpl
+import top.yukonga.miuix.kmp.basic.DropdownItem
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.ListPopupColumn
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.PopupPositionProvider
+import top.yukonga.miuix.kmp.basic.TextField
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.LocalLiquidGlassPopupBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.liquidGlassDropdownColors
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.OverlayListPopup
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import java.io.File
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixPinnedScrollBehavior
 
 @AndroidEntryPoint
 class EditProfileActivity : BaseComposeActivity() {
@@ -181,7 +183,7 @@ private fun EditProfileScaffold(
     viewModel: EditProfileViewModel,
     onBackPressed: () -> Unit,
 ) {
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = rememberMiuixPinnedScrollBehavior()
     val uiState by viewModel.uiState.collectAsState()
 
     var editProfile: EditProfile? by remember { mutableStateOf(null) }
@@ -214,7 +216,7 @@ private fun EditProfileScaffold(
                 scrollBehavior = scrollBehavior,
             )
         },
-        backgroundColor = MaterialTheme.colorScheme.background,
+        backgroundColor = MiuixTheme.colorScheme.background,
     ) { contentPadding ->
         StateScreen(
             isLoading = uiState.isLoading,
@@ -254,53 +256,75 @@ private fun EditProfileScaffold(
     }
 }
 
+/**
+ * Sex selector rendered as a Miuix [TextField].
+ *
+ * The field itself is `readOnly`; a transparent click layer on top routes every tap to a Miuix
+ * [OverlayListPopup] so the row keeps the same "tap the field, pick from a list" interaction the
+ * Material dropdown had, without the field ever taking focus or opening the IME.
+ */
 @Composable
-private fun SexDropdownMenuBox(modifier: Modifier = Modifier, sex: Int, onSexChange: (Int) -> Unit) {
+private fun SexDropdownField(modifier: Modifier = Modifier, sex: Int, onSexChange: (Int) -> Unit) {
     val context = LocalContext.current
     val options = remember {
-        persistentMapOf(
+        listOf(
             1 to context.getString(R.string.profile_sex_male),
-            2 to context.getString(R.string.profile_sex_female)
+            2 to context.getString(R.string.profile_sex_female),
         )
     }
-    val (expanded, setExpanded) = remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = setExpanded,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        OutlinedTextField(
-            value = options[sex] ?: "?",
-            onValueChange = {/* ReadOnly */},
-            modifier = Modifier
-                .fillMaxWidth()
-                .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+    val selectedIndex = options.indexOfFirst { it.first == sex }.coerceAtLeast(0)
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        TextField(
+            value = options.getOrNull(selectedIndex)?.second ?: "",
+            onValueChange = {/* ReadOnly */ },
+            modifier = Modifier.fillMaxWidth(),
+            label = stringResource(id = R.string.profile_sex),
             readOnly = true,
-            label = {
-                Text(text = stringResource(id = R.string.profile_sex))
-            },
+            singleLine = true,
             trailingIcon = {
-                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                Icon(
+                    imageVector = Icons.Rounded.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MiuixTheme.colorScheme.onSecondaryContainer,
+                )
             },
-            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
         )
 
-        ExposedDropdownMenu(
-            modifier = Modifier.heightIn(max = 280.dp),
-            expanded = expanded,
-            onDismissRequest = { setExpanded(false) },
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickableNoIndication { expanded = true }
+        )
+
+        OverlayListPopup(
+            show = expanded,
+            liquidGlassBackdrop = LocalLiquidGlassPopupBackdrop.current,
+            enableWindowDim = false,
+            // Miuix's own dropdown popup (OverlayDropdownPopup) anchors with Align.End so the menu
+            // hangs off the trailing edge of its anchor. OverlayListPopup defaults to Align.Start,
+            // which left-flushes the menu against the page edge and looks detached from the field.
+            alignment = PopupPositionProvider.Align.End,
+            onDismissRequest = { expanded = false },
         ) {
-            options.forEach { (option, title) ->
-                DropdownMenuItem(
-                    text = { Text(title, style = MaterialTheme.typography.bodyLarge) },
-                    onClick = {
-                        setExpanded(false)
-                        if (option != sex) {
-                            onSexChange(option)
-                        }
-                    },
-                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                )
+            ListPopupColumn {
+                options.forEachIndexed { index, (value, title) ->
+                    val isSelected = value == sex
+                    DropdownImpl(
+                        item = DropdownItem(text = title, selected = isSelected),
+                        optionSize = options.size,
+                        isSelected = isSelected,
+                        index = index,
+                        // Translucent rows, same as every other glass dropdown: miuix's default
+                        // row colour is an opaque `surfaceContainer` that would cover the sheet.
+                        dropdownColors = liquidGlassDropdownColors(),
+                        onSelectedIndexChange = {
+                            expanded = false
+                            if (!isSelected) onSexChange(value)
+                        },
+                    )
+                }
             }
         }
     }
@@ -322,11 +346,11 @@ private fun UserAvatarPicker(modifier: Modifier = Modifier, avatar: String, onPi
         Surface(
             modifier = Modifier
                 .size(26.dp)
-                .background(color = MaterialTheme.colorScheme.background, shape = CircleShape)
+                .background(color = MiuixTheme.colorScheme.background, shape = CircleShape)
                 .padding(1.dp)
                 .align(Alignment.BottomEnd),
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary,
+            color = MiuixTheme.colorScheme.primary,
         ) {
             Icon(
                 imageVector = Icons.Rounded.PhotoCamera,
@@ -339,6 +363,47 @@ private fun UserAvatarPicker(modifier: Modifier = Modifier, avatar: String, onPi
     }
 }
 
+/**
+ * Multiline intro field built on Miuix [TextField].
+ *
+ * Miuix has no `supportingText` slot at v0.9.4, so the character counter is composed underneath the
+ * field and the length cap is enforced in `onValueChange`, matching the previous behaviour.
+ */
+@Composable
+private fun IntroTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    maxLength: Int = 500,
+    label: String,
+    onLengthBeyondRestrict: () -> Unit = {},
+) {
+    Column(modifier = modifier) {
+        TextField(
+            value = value,
+            onValueChange = { new ->
+                if (new.length <= maxLength) {
+                    onValueChange(new)
+                } else {
+                    onValueChange(new.take(maxLength))
+                    onLengthBeyondRestrict()
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = label,
+            singleLine = false,
+            minLines = 3,
+            maxLines = 5,
+        )
+        Text(
+            text = "${value.length}/$maxLength",
+            style = MiuixTheme.textStyles.footnote1,
+            color = MiuixTheme.colorScheme.onBackgroundVariant,
+            modifier = Modifier.padding(start = 16.dp, top = 4.dp),
+        )
+    }
+}
+
 @Composable
 private fun EditProfileCard(
     modifier: Modifier = Modifier,
@@ -347,8 +412,6 @@ private fun EditProfileCard(
     nickName: String,
     sex: Int,
     intro: String?,
-    //birthdayShowStatus: Boolean,
-    //birthdayTime: Long,
     onNickNameChange: (String) -> Unit = {},
     onSexChange: (Int) -> Unit = {},
     onIntroChange: (String) -> Unit = {},
@@ -368,39 +431,39 @@ private fun EditProfileCard(
             onPick = onUploadPortrait
         )
 
-        OutlinedTextField(
+        // Username is fixed by the account and cannot be edited here
+        TextField(
             value = name,
             onValueChange = {/* ReadOnly */ },
             modifier = Modifier.fillMaxWidth(),
+            label = stringResource(id = R.string.title_username),
             enabled = false,
-            label = { Text(text = stringResource(id = R.string.title_username)) },
             singleLine = true,
         )
 
-        OutlinedTextField(
+        TextField(
             value = nickName,
             onValueChange = onNickNameChange,
             modifier = Modifier.fillMaxWidth(),
-            label = {
-                Text(text = stringResource(id = R.string.title_nickname))
-            },
+            label = stringResource(id = R.string.title_nickname),
             singleLine = true,
         )
 
-        SexDropdownMenuBox(sex = sex, onSexChange = onSexChange)
+        SexDropdownField(
+            modifier = Modifier.fillMaxWidth(),
+            sex = sex,
+            onSexChange = onSexChange,
+        )
 
-        OutlineCounterTextField(
+        IntroTextField(
             value = intro.orEmpty(),
             onValueChange = onIntroChange,
             modifier = Modifier.fillMaxWidth(),
             maxLength = 500,
+            label = stringResource(id = R.string.title_intro),
             onLengthBeyondRestrict = {
                 context.toastShort(R.string.toast_intro_length_beyond_restrict)
             },
-            label = {
-                Text(text = stringResource(id = R.string.title_intro))
-            },
-            placeholder = { Text(text = stringResource(id = R.string.tip_no_intro)) },
         )
     }
 }

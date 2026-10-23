@@ -7,16 +7,23 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
@@ -27,15 +34,19 @@ import com.huanchengfly.tieba.post.models.PhotoViewData
 import com.huanchengfly.tieba.post.navigateDebounced
 import com.huanchengfly.tieba.post.ui.common.theme.compose.clickableNoIndication
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.isWindowWidthCompact
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
 import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.LocalNavController
+import com.huanchengfly.tieba.post.ui.page.videoview.VideoViewer
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedVideoShutter
 import com.huanchengfly.tieba.post.ui.widgets.compose.NetworkImage
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.MorphAnchor
 import com.huanchengfly.tieba.post.ui.widgets.compose.PbContentText
 import com.huanchengfly.tieba.post.ui.widgets.compose.VoicePlayer
 import com.huanchengfly.tieba.post.ui.widgets.compose.singleMediaFraction
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.LocalVideoPreviewState
 import com.huanchengfly.tieba.post.utils.ThemeUtil
+import top.yukonga.miuix.kmp.squircle.squircleClip
 
 @Immutable
 interface PbContentRender {
@@ -133,7 +144,7 @@ value class TextContentRender(val value: AnnotatedString) : PbContentRender {
     override fun Render() {
         NetworkImage(
             modifier = Modifier
-                .clip(shape = MaterialTheme.shapes.small)
+                .squircleClip(SquircleCornerRadius.Small)
                 .fillMaxWidth(singleMediaFraction)
                 .aspectRatio(ratio = dimensions?.run { width * 1f / height } ?: 1.0f),
             imageUrl = picUrl,
@@ -192,15 +203,35 @@ class VideoContentRender(
         val picModifier = Modifier
             .fillMaxWidth(widthFraction)
             .aspectRatio(ratio = dimensions?.run { width * 1f / height } ?: 1.0f)
-            .clip(shape = MaterialTheme.shapes.small)
+            .squircleClip(SquircleCornerRadius.Small)
 
         if (videoUrl.isNotBlank()) {
             val context = LocalContext.current
             val previewState = LocalVideoPreviewState.current
+            val density = LocalDensity.current
+            val ratio = dimensions?.run { width * 1f / height } ?: 1.0f
+            // 容器形变的起点：这一格视频封面在窗口里的矩形（点击瞬间交给视频浮层）。
+            var bounds by remember { mutableStateOf(Rect.Zero) }
             FeedVideoShutter(
-                modifier = picModifier.clickableNoIndication {
-                    VideoViewActivity.launch(context, videoUrl, picUrl)
-                },
+                modifier = picModifier
+                    .onGloballyPositioned { bounds = it.boundsInWindow() }
+                    .clickableNoIndication {
+                        val opened = VideoViewer.open(
+                            context = context,
+                            videoUrl = videoUrl,
+                            thumbnailUrl = picUrl,
+                            mediaId = mediaId,
+                            aspectRatio = ratio,
+                            anchor = MorphAnchor(
+                                url = videoUrl,
+                                bounds = bounds,
+                                cornerRadiusPx = with(density) { 8.dp.toPx() },
+                                ratio = ratio,
+                                thumbUrl = picUrl,
+                            ),
+                        )
+                        if (!opened) VideoViewActivity.launch(context, videoUrl, picUrl)
+                    },
                 thumbnailUrl = picUrl,
                 isPipMode = previewState?.videoViewMediaId == mediaId && previewState.isInPipMode
             )

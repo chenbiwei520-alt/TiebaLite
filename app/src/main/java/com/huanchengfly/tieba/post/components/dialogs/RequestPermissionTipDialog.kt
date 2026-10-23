@@ -46,6 +46,8 @@ import com.huanchengfly.tieba.post.enableBackgroundBlur
 import com.huanchengfly.tieba.post.theme.Grey700
 import com.huanchengfly.tieba.post.theme.Grey800
 import com.huanchengfly.tieba.post.toastShort
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
 import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultDialogContentPadding
 import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultDialogMargin
 import com.huanchengfly.tieba.post.ui.widgets.compose.NegativeButton
@@ -211,7 +213,7 @@ class RequestPermissionTipDialog() : ResultDialog<Result>(), ActivityResultCallb
         private fun PermissionTip(modifier: Modifier = Modifier, title: String, message: String) {
             Surface(
                 modifier = modifier.fillMaxWidth(dialogAdaptiveFraction),
-                shape = MaterialTheme.shapes.large,
+                shape = SquircleShape(SquircleCornerRadius.Large),
                 color = Color.White, // Hardcode background color
                 contentColor = Grey800,
                 shadowElevation = 4.dp

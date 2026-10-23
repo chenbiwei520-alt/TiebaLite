@@ -5,7 +5,6 @@ package com.huanchengfly.tieba.post.arch
 import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.pager.PagerState
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.InternalComposeApi
@@ -28,6 +27,7 @@ import com.huanchengfly.tieba.post.App.Companion.AppBackgroundScope
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.retrofit.exception.NoConnectivityException
 import com.huanchengfly.tieba.post.toastShort
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -231,13 +231,13 @@ inline fun <INTENT : UiIntent, reified VM : BaseViewModel<INTENT, *, *, *>> page
     }
 }
 
-val TopAppBarScrollBehavior.isOverlapping: Boolean
+val ScrollBehavior.isOverlapping: Boolean
     get() = state.overlappedFraction > 0.01f
 
-val TopAppBarScrollBehavior.isFullyCollapsed: Boolean
+val ScrollBehavior.isFullyCollapsed: Boolean
     get() = state.collapsedFraction == 1.0f
 
-inline fun List<TopAppBarScrollBehavior>.isOverlapping(pagerState: PagerState): Boolean {
+inline fun List<ScrollBehavior>.isOverlapping(pagerState: PagerState): Boolean {
     return this.getOrNull(pagerState.currentPage)?.isOverlapping ?: false
 }
 

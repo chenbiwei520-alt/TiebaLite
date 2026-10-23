@@ -43,6 +43,8 @@ import androidx.compose.ui.util.fastForEach
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.ui.icons.FitPageHeight
 import com.huanchengfly.tieba.post.ui.icons.FitPageWidth
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.LocalPlayerGestureState
 
 /**
@@ -164,7 +166,7 @@ private fun ContentScaleBottomSheet(
                         } else {
                             ButtonDefaults.outlinedButtonColors()
                         },
-                        shape = MaterialTheme.shapes.small,
+                        shape = SquircleShape(SquircleCornerRadius.Small),
                         contentPadding = ButtonDefaults.TextButtonContentPadding,
                     ) {
                         if (selected) {

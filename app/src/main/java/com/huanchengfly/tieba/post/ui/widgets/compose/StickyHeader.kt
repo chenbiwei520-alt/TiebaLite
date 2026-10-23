@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.derivedStateOf
@@ -26,6 +25,7 @@ import com.huanchengfly.tieba.post.LocalHabitSettings
 import com.huanchengfly.tieba.post.copy
 import com.huanchengfly.tieba.post.theme.isTranslucent
 import kotlinx.coroutines.delay
+import top.yukonga.miuix.kmp.basic.TopAppBarState
 
 // Workaround to enable background blurring on StickyHeader
 @Composable @ReadOnlyComposable

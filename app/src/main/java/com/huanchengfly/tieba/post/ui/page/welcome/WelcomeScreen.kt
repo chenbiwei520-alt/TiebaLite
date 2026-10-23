@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post.ui.page.welcome
 
-import android.os.Build
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import androidx.activity.compose.BackHandler
@@ -84,7 +83,6 @@ import com.huanchengfly.tieba.post.ui.page.settings.forumListPreference
 import com.huanchengfly.tieba.post.ui.page.settings.forumSortPreference
 import com.huanchengfly.tieba.post.ui.page.settings.hideReplyPreference
 import com.huanchengfly.tieba.post.ui.page.settings.imageLoadPreference
-import com.huanchengfly.tieba.post.ui.page.settings.reduceEffectPreference
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.NegativeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.PositiveButton
@@ -409,11 +407,7 @@ private fun CustomPage(
 
             darkThemeModePreference()
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                reduceEffectPreference()
-            } else {
-                darkImagePreference()
-            }
+            darkImagePreference()
 
             forumListPreference()
         }

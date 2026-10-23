@@ -35,6 +35,14 @@ val RedA700 = Color(0xFFD50000)
 val Red700 = Color(0xFFD32F2F)
 val Red800 = Color(0xFFC62828)
 
+/**
+ * 点赞（爱心）点亮后的颜色。
+ *
+ * 固定用红色，不跟 [MaterialTheme.colorScheme.primary]：主题色在好几个内置主题（含默认的贴吧蓝）
+ * 里是蓝色，点亮的爱心跟着变成蓝的就完全不像「赞」了。深浅色主题下这个红都够亮。
+ * */
+val LikeRed = Color(0xFFE93B3D)
+
 // Primary color of Built-in Themes
 val BlueViolet = Color(0xFF8A2BE2)
 val JadeGreen = Color(0xFF019C74)

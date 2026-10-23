@@ -3,6 +3,7 @@ package com.huanchengfly.tieba.post.ui.page.forum.detail
 import androidx.annotation.StringRes
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -15,18 +16,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -44,14 +40,19 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.BebasFamily
 import com.huanchengfly.tieba.post.ui.common.theme.compose.clickableNoIndication
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
 import com.huanchengfly.tieba.post.ui.models.forum.ForumManager
 import com.huanchengfly.tieba.post.ui.page.photoview.PhotoViewActivity
+import top.yukonga.miuix.kmp.basic.SmallTitle
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
+import top.yukonga.miuix.kmp.basic.Card
+import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
+import com.huanchengfly.tieba.post.ui.widgets.compose.CenterAlignedTopAppBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
+import top.yukonga.miuix.kmp.squircle.squircleClip
 
 @Composable
 fun ForumDetailPage(
@@ -66,7 +67,7 @@ fun ForumDetailPage(
         isLoading = uiState.isLoading,
         onReload = viewModel::reload,
     ) {
-        Scaffold(
+        MyScaffold(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text(stringResource(id = R.string.title_forum_info)) },
@@ -74,7 +75,7 @@ fun ForumDetailPage(
                 )
             }
         ) { paddingValues ->
-            val forumDetail = uiState.detail ?: return@Scaffold
+            val forumDetail = uiState.detail ?: return@MyScaffold
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -94,17 +95,19 @@ fun ForumDetailPage(
                 IntroItem(slogan = forumDetail.slogan, intro = forumDetail.intro)
 
                 if (forumDetail.managers != null) {
-                    Chip(text = stringResource(id = R.string.title_forum_manager))
+                    SmallTitle(text = stringResource(id = R.string.title_forum_manager))
 
-                    LazyRow {
-                        items(forumDetail.managers, key = { it.id }) {
-                            ManagerItem(manager = it) {
-                                onManagerClicked(it.id)
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        LazyRow {
+                            items(forumDetail.managers, key = { it.id }) {
+                                ManagerItem(manager = it) {
+                                    onManagerClicked(it.id)
+                                }
                             }
                         }
                     }
                 } else {
-                    Chip(text = stringResource(id = R.string.title_forum_manager_none))
+                    SmallTitle(text = stringResource(id = R.string.title_forum_manager_none))
                 }
             }
         }
@@ -137,10 +140,7 @@ private fun ForumDetailContent(
         )
     }
 
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = MaterialTheme.colorScheme.secondaryContainer
-    ) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         ProvideTextStyle(
             value = MaterialTheme.typography.titleLarge.copy(
                 fontSize = 20.sp,
@@ -158,12 +158,10 @@ private fun ForumDetailContent(
                     statNum = memberCount,
                     statTitle = R.string.text_stat_follow
                 )
-                VerticalDivider(color = MaterialTheme.colorScheme.outline)
                 StatCardItem(
                     statNum = threadCount,
                     statTitle = R.string.text_stat_threads
                 )
-                VerticalDivider(color = MaterialTheme.colorScheme.outline)
                 StatCardItem(
                     statNum = postCount,
                     statTitle = R.string.title_stat_posts_num
@@ -179,20 +177,20 @@ private fun IntroItem(modifier: Modifier = Modifier, slogan: String, intro: Stri
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Chip(text = stringResource(id = R.string.title_forum_intro))
+        SmallTitle(text = stringResource(id = R.string.title_forum_intro))
 
-        Text(
-            text = slogan,
-            modifier = Modifier.padding(horizontal = 16.dp),
-            style = MaterialTheme.typography.bodyLarge
-        )
+        // Slogan + intro belong to one Miuix group card; they used to sit bare on the background.
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(text = slogan, style = MaterialTheme.typography.bodyLarge)
 
-        if (intro != null) {
-            Text(
-                text = intro,
-                modifier = Modifier.padding(horizontal = 16.dp),
-                style = MaterialTheme.typography.bodyLarge
-            )
+                if (intro != null) {
+                    Text(text = intro, style = MaterialTheme.typography.bodyLarge)
+                }
+            }
         }
     }
 }
@@ -203,20 +201,22 @@ private fun ManagerItem(
     manager: ForumManager,
     onClick: () -> Unit
 ) {
-    Column(
+    // 横向排列：头像在左、名字在右，和「关于本吧」顶部的吧主信息保持同一阅读方向。
+    Row(
         modifier = modifier
-            .clip(MaterialTheme.shapes.medium)
+            .squircleClip(SquircleCornerRadius.Medium)
             .semantics {
                 role = Role.Image
                 isTraversalGroup = true
                 contentDescription = manager.name
             }
             .clickable(onClick = onClick)
-            .padding(6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Avatar(data = manager.avatarUrl, size = Sizes.Medium)
-        Text(text = manager.name, modifier = Modifier.padding(top = 4.dp))
+        Avatar(data = manager.avatarUrl, size = Sizes.Small)
+        Text(text = manager.name, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
     }
 }
 

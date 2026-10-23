@@ -35,6 +35,8 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshBox
+import com.huanchengfly.tieba.post.plus
+import com.huanchengfly.tieba.post.ui.widgets.compose.ListItemCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 
@@ -81,18 +83,22 @@ fun SearchForumPage(
             MyLazyColumn(
                 modifier = modifier.fillMaxSize(),
                 state = listState,
-                contentPadding = contentPadding,
+                // Same gutters and card rhythm as the feed / forum thread / history lists.
+                contentPadding = contentPadding + PaddingValues(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (exactMatchForum != null) {
                     item(key = "ExactMatchHeader", contentType = headerContentType) {
                         Chip(
                             text = stringResource(id = R.string.title_exact_match),
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier.padding(vertical = 8.dp),
                             invertColor = true
                         )
                     }
                     item(key = exactMatchForum.id) {
-                        SearchForumItem(forum = exactMatchForum, onClick = onForumClickedListener)
+                        ListItemCard {
+                            SearchForumItem(forum = exactMatchForum, onClick = onForumClickedListener)
+                        }
                     }
                 }
 
@@ -100,11 +106,14 @@ fun SearchForumPage(
                     item(key = "FuzzyMatchHeader", contentType = headerContentType) {
                         Chip(
                             text = stringResource(id = R.string.title_fuzzy_match),
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            // 水平内边距交给列表的 contentPadding gutter，与上方分区标题和卡片左边线对齐
+                            modifier = Modifier.padding(vertical = 8.dp),
                         )
                     }
                     items(fuzzyMatchForums, key = { it.id }) {
-                        SearchForumItem(forum = it, onClick = onForumClickedListener)
+                        ListItemCard {
+                            SearchForumItem(forum = it, onClick = onForumClickedListener)
+                        }
                     }
                 }
             }

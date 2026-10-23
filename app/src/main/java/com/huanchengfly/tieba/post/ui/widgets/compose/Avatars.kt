@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 import coil3.request.error
 import com.google.accompanist.drawablepainter.rememberDrawablePainter
 
@@ -29,6 +28,27 @@ object Sizes {
     val Small = 36.dp
     val Medium = 48.dp
     val Large = 56.dp
+
+    /**
+     * The corner radius used by cards, buttons and text fields.
+     *
+     * 16.dp is Miuix's own value for both `Card` and `Button`, so adopting it keeps this app's
+     * surfaces identical to the platform's.
+     *
+     * Note dialogs are deliberately NOT this value — see [DialogCornerRadius].
+     */
+    val CornerRadius = 16.dp
+
+    /**
+     * The corner radius for dialog surfaces.
+     *
+     * Miuix treats dialogs separately from cards: `DialogDefaults.CornerRadius` is 32.dp, twice
+     * `CardDefaults.CornerRadius`. Verified against the pinned miuix-ui artifact, whose static
+     * initialiser sets `CornerRadius` from `bipush 32`. Because the dialog is drawn with
+     * `squircleSurface` (continuous curvature), the nominal 32.dp reads visually tighter than a
+     * circular 32.dp arc would.
+     */
+    val DialogCornerRadius = 32.dp
 }
 
 @NonRestartableComposable

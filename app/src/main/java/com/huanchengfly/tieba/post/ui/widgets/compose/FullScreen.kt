@@ -30,7 +30,6 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.findViewTreeSavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import com.huanchengfly.tieba.post.LocalUISettings
 import com.huanchengfly.tieba.post.enableBackgroundBlur
 import java.util.UUID
 
@@ -42,7 +41,7 @@ fun FullScreen(content: @Composable () -> Unit) {
     val id = rememberSaveable { UUID.randomUUID() }
 
     val backgroundColor = MaterialTheme.colorScheme.background.toArgb()
-    val backgroundBlur = !LocalUISettings.current.reduceEffect
+    val backgroundBlur = true
     val fullScreenLayout = remember {
         FullScreenLayout(view, backgroundColor, backgroundBlur, id).apply {
             setContent(parentComposition, currentContent)

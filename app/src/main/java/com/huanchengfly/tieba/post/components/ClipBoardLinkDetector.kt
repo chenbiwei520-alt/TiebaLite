@@ -92,12 +92,14 @@ object ClipBoardLinkDetector {
         if (uri.scheme == "com.baidu.tieba" && uri.host == "unidispatch") {
             when (val path = uri.path?.lowercase()) {
                 "/frs" -> {
-                    val forumName = uri.getQueryParameter("kw") ?: throw IllegalArgumentException("kw not found")
+                    val forumName = uri.getQueryParameter("kw")?.takeIf { it.isNotEmpty() }
+                        ?: throw IllegalArgumentException("kw not found")
                     ClipBoardLink.Forum("https://tieba.baidu.com/f?kw=$forumName", forumName)
                 }
 
                 "/pb" -> {
-                    val threadId = uri.getQueryParameter("tid") ?: throw IllegalArgumentException("tid not found")
+                    val threadId = uri.getQueryParameter("tid")?.takeIf { it.isNotEmpty() }
+                        ?: throw IllegalArgumentException("tid not found")
                     ClipBoardLink.Thread(
                         url = "https://tieba.baidu.com/p/$threadId",
                         threadId = threadId.toLongOrNull() ?: throw IllegalArgumentException("Illegal tid $threadId")

@@ -18,10 +18,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -32,65 +29,59 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.util.fastForEachIndexed
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onNotNull
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.CenterAlignedTopAppBar
-import com.huanchengfly.tieba.post.ui.widgets.compose.FancyAnimatedIndicatorWithModifier
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.StrongBox
+import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixTabRow
 import com.huanchengfly.tieba.post.workers.NewMessageWorker
 import com.huanchengfly.tieba.post.workers.OKSignWorker
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixPinnedScrollBehavior
 
 @Composable
 fun WorkInfoPage(
     viewModel: WorkInfoViewModel = hiltViewModel(),
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = rememberMiuixPinnedScrollBehavior()
 
     val workers = remember {
         persistentListOf(OKSignWorker.TAG, NewMessageWorker.TAG)
     }
     val pagerState = rememberPagerState { workers.size }
+    // Feeds the liquid glass fill of the tab row's pills
+    val tabBackdrop = rememberMiuixBarBackdrop()
 
     MyScaffold(
         topBar = {
+            if (paneMode) return@MyScaffold
             CenterAlignedTopAppBar(
                 titleRes = R.string.title_settings_worker,
                 navigationIcon = { BackNavigationIcon(onBackPressed = onBack) },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                backdrop = tabBackdrop
             ) {
-                PrimaryTabRow(
+                MiuixTabRow(
+                    tabs = workers,
                     selectedTabIndex = pagerState.currentPage,
-                    indicator = {
-                        FancyAnimatedIndicatorWithModifier(pagerState.currentPage)
+                    onTabSelected = { index ->
+                        coroutineScope.launch { pagerState.animateScrollToPage(index) }
                     },
-                    containerColor = Color.Transparent // Use Toolbar color
-                ) {
-                    workers.fastForEachIndexed { index, tag ->
-                        Tab(
-                            text = {
-                                Text(text = tag, letterSpacing = 0.75.sp)
-                            },
-                            selected = pagerState.currentPage == index,
-                            onClick = {
-                                coroutineScope.launch { pagerState.animateScrollToPage(index) }
-                            },
-                            unselectedContentColor = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                }
+                    backdrop = tabBackdrop,
+                )
             }
         },
     ) { paddingValues ->
@@ -98,6 +89,7 @@ fun WorkInfoPage(
             state = pagerState,
             modifier = Modifier
                 .fillMaxSize()
+                .miuixLayerBackdrop(tabBackdrop)
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
             contentPadding = paddingValues,
             beyondViewportPageCount = 1,

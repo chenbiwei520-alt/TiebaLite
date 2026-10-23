@@ -3,6 +3,7 @@ package com.huanchengfly.tieba.post.ui.page.user.likeforum
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.PaddingNone
+import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.api.models.UserLikeForumBean
 import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaNotLoggedInException
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
@@ -34,6 +36,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.LazyLoad
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.defaultBottomIndicator
+import top.yukonga.miuix.kmp.basic.Card
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import kotlinx.collections.immutable.persistentListOf
 
@@ -42,6 +45,7 @@ fun UserLikeForumPage(
     uid: Long,
     fluid: Boolean = false,
     lazyListState: LazyListState = rememberLazyListState(),
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     viewModel: UserLikeForumViewModel = pageViewModel(),
 ) {
     val navigator = LocalNavController.current
@@ -97,6 +101,12 @@ fun UserLikeForumPage(
             SwipeUpLazyLoadColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = lazyListState,
+                contentPadding = contentPadding + PaddingValues(
+                    start = 16.dp,
+                    top = 12.dp,
+                    end = 16.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 isLoading = isLoadingMore,
                 onLazyLoad = {
                     viewModel.send(UserLikeForumUiIntent.LoadMore(uid, currentPage))
@@ -104,8 +114,10 @@ fun UserLikeForumPage(
                 bottomIndicator = defaultBottomIndicator,
             ) {
                 items(items = forums, key = { it.id }) { forumBean ->
-                    UserLikeForumItem(Modifier.fillMaxWidth(), item = forumBean) {
-                        forumBean.name?.let { navigator.navigate(Forum(forumName = it)) }
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        UserLikeForumItem(Modifier.fillMaxWidth(), item = forumBean) {
+                            forumBean.name?.let { navigator.navigate(Forum(forumName = it)) }
+                        }
                     }
                 }
             }

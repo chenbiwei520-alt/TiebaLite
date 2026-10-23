@@ -26,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.theme.LikeRed
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onNotNull
 import com.huanchengfly.tieba.post.ui.icons.CommentNew
@@ -104,7 +105,8 @@ fun ThreadActionButtonRow(
             modifier = Modifier.weight(1f),
             icon = if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
             contentColor = if (liked) {
-                MaterialTheme.colorScheme.primary
+                // 点亮的爱心固定是红的，跟主题色无关（默认主题的 primary 是蓝的）。
+                LikeRed
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },

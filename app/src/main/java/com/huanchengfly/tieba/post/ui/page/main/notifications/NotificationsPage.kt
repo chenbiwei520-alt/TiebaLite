@@ -1,28 +1,20 @@
 package com.huanchengfly.tieba.post.ui.page.main.notifications
 
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.util.fastForEachIndexed
 import androidx.navigation.NavController
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.navigateDebounced
+import com.huanchengfly.tieba.post.ui.miuix.MiuixBlurNavigationBarPlaceHolder
+import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
 import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.Destination.Search
 import com.huanchengfly.tieba.post.ui.page.LocalNavController
@@ -37,12 +29,15 @@ import com.huanchengfly.tieba.post.ui.page.main.notifications.list.Notifications
 import com.huanchengfly.tieba.post.ui.widgets.compose.AccountNavIconIfCompact
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.BlurNavigationBarPlaceHolder
-import com.huanchengfly.tieba.post.ui.widgets.compose.FancyAnimatedIndicatorWithModifier
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBarPaged
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Search
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberPagerListStates
 import kotlinx.coroutines.launch
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixEnterAlwaysScrollBehavior
 
 @Composable
 fun NotificationsPage(
@@ -53,7 +48,7 @@ fun NotificationsPage(
     val pages = NotificationsType.entries
     val pagerState = rememberPagerState(initialPage = initialPage.ordinal, pageCount = { pages.size })
     val listStates = rememberPagerListStates(pages.size)
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val scrollBehavior = rememberMiuixEnterAlwaysScrollBehavior()
     val coroutineScope = rememberCoroutineScope()
 
     OnMainNavigationScrollTopEvent<MainDestination.Notification>(
@@ -61,6 +56,8 @@ fun NotificationsPage(
         topAppBarState = scrollBehavior.state,
         listState = { listStates.getOrNull(pagerState.currentPage) }
     )
+    // Feeds the liquid glass fill of the tab row's pills
+    val tabBackdrop = rememberMiuixBarBackdrop()
 
     MyScaffold(
         useMD2Layout = true,
@@ -71,44 +68,38 @@ fun NotificationsPage(
                 scrollBehavior = scrollBehavior,
                 canScrollBackward = {
                     listStates[pagerState.currentPage].canScrollBackward
-                }
+                },
+                backdrop = tabBackdrop,
             ) {
-                PrimaryTabRow(
-                    selectedTabIndex = pagerState.currentPage,
-                    indicator = {
-                        FancyAnimatedIndicatorWithModifier(pagerState.currentPage)
-                    },
-                    containerColor = Color.Transparent // Use Toolbar color
-                ) {
-                    pages.fastForEachIndexed { index, type ->
-                        val text = when (type) {
-                            NotificationsType.ReplyMe -> R.string.title_reply_me
+                MiuixTabRow(
+                    tabs = pages.map { type ->
+                        stringResource(
+                            when (type) {
+                                NotificationsType.ReplyMe -> R.string.title_reply_me
 
-                            NotificationsType.AtMe -> R.string.title_at_me
-                        }
-
-                        Tab(
-                            text = {
-                                Text(text = stringResource(id = text), letterSpacing = 0.75.sp)
-                            },
-                            selected = pagerState.currentPage == index,
-                            onClick = {
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(index)
-                                }
-                            },
-                            unselectedContentColor = MaterialTheme.colorScheme.onSurface
+                                NotificationsType.AtMe -> R.string.title_at_me
+                            }
                         )
-                    }
-                }
+                    },
+                    selectedTabIndex = pagerState.currentPage,
+                    onTabSelected = { index ->
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    },
+                    backdrop = tabBackdrop,
+                )
             }
         },
-        bottomBar = if (fromHome) bottomNavigationPlaceholder else BlurNavigationBarPlaceHolder,
+        bottomBar = {
+            if (fromHome) bottomNavigationPlaceholder else MiuixBlurNavigationBarPlaceHolder(tabBackdrop)
+        },
         bottomBarAtop = calculateMainNavigationSuiteType().isFloatingNavigationBar,
     ) { contentPadding ->
         ProvideNavigator(navigator = navigator) {
             HorizontalPager(
                 state = pagerState,
+                modifier = Modifier.miuixLayerBackdrop(tabBackdrop),
                 key = { pages[it] }
             ) {
                 NotificationsListPage(
@@ -126,37 +117,44 @@ fun NotificationsPage(
 private fun NotificationsToolBar(
     navigator: NavController,
     fromHome: Boolean,
-    scrollBehavior: TopAppBarScrollBehavior?,
+    scrollBehavior: ScrollBehavior?,
     canScrollBackward: () -> Boolean,
-    content: (@Composable ColumnScope.() -> Unit)?
+    backdrop: LayerBackdrop? = null,
+    // Occupies the title slot so the tab row shares the first row with the search action, rather
+    // than rendering on a second row below it. The page name is intentionally dropped.
+    content: @Composable () -> Unit
 ) {
     if (fromHome) {
         TopAppBarPaged(
-            title = { Text(text = stringResource(R.string.title_notifications)) },
+            title = content,
+            // Keep the tab row centred like it was in the `content` slot: that slot rendered inside
+            // a Column with horizontalAlignment = CenterHorizontally, but the title slot defaults
+            // to CenterStart.
+            titleHorizontalAlignment = Alignment.CenterHorizontally,
             navigationIcon = {
                 AccountNavIconIfCompact(onLoginClicked = { navigator.navigate(Destination.Login) })
             },
             actions = {
                 ActionItem(
-                    icon = Icons.Rounded.Search,
+                    icon = MiuixIcons.Search,
                     contentDescription = stringResource(id = R.string.title_search),
                     onClick = { navigator.navigateDebounced(Search) }
                 )
             },
             scrollBehavior = scrollBehavior,
             canScrollBackward = canScrollBackward,
-            content = content
+            backdrop = backdrop,
         )
     } else {
         TopAppBarPaged(
-            title = { Text(text = stringResource(R.string.title_notifications)) },
+            title = content,
             titleHorizontalAlignment = Alignment.CenterHorizontally,
             navigationIcon = {
                 BackNavigationIcon(onBackPressed = navigator::navigateUp)
             },
             scrollBehavior = scrollBehavior,
             canScrollBackward = canScrollBackward,
-            content = content
+            backdrop = backdrop,
         )
     }
 }

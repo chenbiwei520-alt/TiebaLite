@@ -22,10 +22,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -33,14 +35,13 @@ import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PostAdd
-import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.VerticalAlignTop
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FloatingActionButtonMenu
-import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -58,10 +59,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -87,12 +90,16 @@ import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.navigateDebounced
 import com.huanchengfly.tieba.post.theme.FloatProducer
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
+import com.huanchengfly.tieba.post.theme.createTopAppBarColors
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.ForumAvatarSharedBoundsKey
 import com.huanchengfly.tieba.post.ui.ForumTitleSharedBoundsKey
+import com.huanchengfly.tieba.post.ui.miuix.MiuixProgressiveBlurBar
+import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixExitUntilCollapsedScrollBehavior
 import com.huanchengfly.tieba.post.ui.common.localSharedBounds
 import com.huanchengfly.tieba.post.ui.common.theme.compose.clickableNoIndication
-import com.huanchengfly.tieba.post.ui.common.windowsizeclass.isWindowHeightCompact
 import com.huanchengfly.tieba.post.ui.models.forum.ForumData
 import com.huanchengfly.tieba.post.ui.models.forum.GoodClassify
 import com.huanchengfly.tieba.post.ui.models.settings.ForumFAB
@@ -112,14 +119,14 @@ import com.huanchengfly.tieba.post.ui.utils.rememberScrollOrientationConnection
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.BlurScaffold
+import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.CollapsingAvatarTopAppBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
-import com.huanchengfly.tieba.post.ui.widgets.compose.Container
+import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultFloatingActionButtonMenuItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultToggleFloatingActionButton
-import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCardPlaceholder
+import com.huanchengfly.tieba.post.ui.widgets.compose.states.MiuixLoadingIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.LinearProgressIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.MenuScope
 import com.huanchengfly.tieba.post.ui.widgets.compose.MoreMenuItem
@@ -136,6 +143,9 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Refresh
+import top.yukonga.miuix.kmp.icon.extended.Search
 
 /** The default expanded height of a Forum TopAppBar */
 private val ForumAppbarExpandHeight: Dp = 144.dp
@@ -193,7 +203,7 @@ fun ForumPage(
     val snackbarHostState = rememberSnackbarHostState()
     val onShowSnackbarShort: (CharSequence) -> Unit = {
         coroutineScope.launch {
-            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.newestSnackbarData()?.dismiss()
             snackbarHostState.showSnackbar(message = it.toString())
         }
     }
@@ -208,7 +218,7 @@ fun ForumPage(
 
     val pagerState = rememberPagerState { forumTabs.size }
     val listStates by rememberUpdatedState(rememberPagerListStates(pagerState.pageCount))
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val scrollBehavior = rememberMiuixExitUntilCollapsedScrollBehavior()
     val scrollOrientationConnection = rememberScrollOrientationConnection()
 
     viewModel.uiEvent.collectUiEventWithLifecycle {
@@ -308,119 +318,152 @@ fun ForumPage(
         fabMenuExpanded = it
     }
 
-    BlurScaffold(
-        topHazeBlock = {
-            blurEnabled = (listStates[pagerState.currentPage].canScrollBackward ||
-                    scrollBehavior.isOverlapping) && uiState.error == null
-        },
+    // HyperOS progressive blur for the app bar, replacing the previous haze blur which applied a
+    // flat blur to the whole bar instead of ramping it out towards the content.
+    val barBackdrop = rememberMiuixBarBackdrop()
+    val barColors = if (barBackdrop != null) {
+        // The blur layer supplies the bar background, so keep the bar itself transparent
+        MaterialTheme.colorScheme.createTopAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+        )
+    } else {
+        TiebaLiteTheme.topAppBarColors
+    }
+    val barBlurVisible = (listStates[pagerState.currentPage].canScrollBackward ||
+            scrollBehavior.isOverlapping) && uiState.error == null
+
+    MyScaffold(
         topBar = {
             val onTitleClicked: () -> Unit = { navigator.navigateDebounced(ForumDetail(forumName)) }
 
-            CollapsingAvatarTopAppBar(
-                avatar = {
-                    ForumAvatar(
-                        modifier = Modifier.matchParentSize(),
-                        avatar = forumData?.avatar ?: avatarUrl,
-                        forum = forumName,
-                        transitionKey = transitionKey
-                    )
+            // `CollapsingAvatarTopAppBar` keeps a `TopAppBarExpandedHeight` (64.dp) strip visible
+            // once collapsed, so the blur ramp is sized to `statusBar inset + 64.dp` rather than the
+            // full expanded height. `ProgressiveBlur`'s ramp is proportional to its layer's height;
+            // a full-height layer would push the ramp's clear end behind the forum avatar header and
+            // leave the visible strip sitting in the saturated head of the gradient, which reads as
+            // "no progressive blur at all". Sizing it to the resting strip keeps the ramp travelling
+            // the same physical distance at every point of the collapse.
+            val blurBandHeight = with(LocalDensity.current) {
+                WindowInsets.statusBars.getTop(this).toDp() + TopAppBarDefaults.TopAppBarExpandedHeight
+            }
+            MiuixProgressiveBlurBar(
+                backdrop = barBackdrop,
+                bandHeight = blurBandHeight,
+                blurProgress = {
+                    // Blur ramps in as the header collapses and the list moves under the bar
+                    if (barBlurVisible) scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f) else 0f
                 },
-                title = {
-                    Text(
-                        text = stringResource(id = R.string.title_forum, forumName),
-                        modifier = Modifier
-                            .localSharedBounds(ForumTitleSharedBoundsKey(forumName, transitionKey))
-                            .clickableNoIndication(enabled = forumData != null, onClick = onTitleClicked),
-                        maxLines = 1,
-                        overflow = TextOverflow.MiddleEllipsis,
-                    )
-                },
-                subtitle = {
-                    AnimatedVisibility(
-                        visible = forumData != null,
-                        modifier = Modifier.clickableNoIndication(onClick = onTitleClicked),
-                        enter = TopBarSubtitleEnterTransition,
-                        exit = TopBarSubtitleExitTransition
-                    ) {
-                        forumData?.let { ForumSubtitle(forum = it) }
-                    }
-                },
-                navigationIcon = {
-                    BackNavigationIcon(onBackPressed = navigator::navigateUp)
-                },
-                actions = {
-                    if (forumData == null) return@CollapsingAvatarTopAppBar // Loading
+            ) {
+                CollapsingAvatarTopAppBar(
+                    avatar = {
+                        ForumAvatar(
+                            modifier = Modifier.matchParentSize(),
+                            avatar = forumData?.avatar ?: avatarUrl,
+                            forum = forumName,
+                            transitionKey = transitionKey
+                        )
+                    },
+                    title = {
+                        Text(
+                            text = stringResource(id = R.string.title_forum, forumName),
+                            modifier = Modifier
+                                .localSharedBounds(ForumTitleSharedBoundsKey(forumName, transitionKey))
+                                .clickableNoIndication(enabled = forumData != null, onClick = onTitleClicked),
+                            maxLines = 1,
+                            overflow = TextOverflow.MiddleEllipsis,
+                        )
+                    },
+                    subtitle = {
+                        AnimatedVisibility(
+                            visible = forumData != null,
+                            modifier = Modifier.clickableNoIndication(onClick = onTitleClicked),
+                            enter = TopBarSubtitleEnterTransition,
+                            exit = TopBarSubtitleExitTransition
+                        ) {
+                            forumData?.let { ForumSubtitle(forum = it) }
+                        }
+                    },
+                    navigationIcon = {
+                        BackNavigationIcon(onBackPressed = navigator::navigateUp)
+                    },
+                    actions = {
+                        if (forumData == null) return@CollapsingAvatarTopAppBar // Loading
 
-                    val forumSignFollowVisibility by remember {
-                        derivedStateOf { scrollBehavior.state.collapsedFraction < SignActionVisibilityThreshold }
-                    }
-                    if (loggedIn && forumSignFollowVisibility) {
-                        ForumSignFollowActionButton(
-                            forum = forumData,
-                            onFollow = viewModel::onLikeForum,
-                            onSignIn = viewModel::onSignIn,
-                            collapsedFraction = { scrollBehavior.state.collapsedFraction }
+                        val forumSignFollowVisibility by remember {
+                            derivedStateOf { scrollBehavior.state.collapsedFraction < SignActionVisibilityThreshold }
+                        }
+                        if (loggedIn && forumSignFollowVisibility) {
+                            ForumSignFollowActionButton(
+                                forum = forumData,
+                                onFollow = viewModel::onLikeForum,
+                                onSignIn = viewModel::onSignIn,
+                                collapsedFraction = { scrollBehavior.state.collapsedFraction }
+                            )
+                        }
+
+                        ActionItem(
+                            icon = MiuixIcons.Search,
+                            contentDescription = R.string.btn_search_in_forum,
+                            onClick = { navigator.navigateDebounced(ForumSearchPost(forumName, forumData.id)) }
+                        )
+
+                        ClickMenu(
+                            menuContent = {
+                                TextMenuItem(text = R.string.title_share, onClick = viewModel::shareForum)
+
+                                TextMenuItem(text = R.string.title_send_to_desktop) {
+                                    viewModel.sendToDesktop(context.getString(R.string.title_forum, forumData.name))
+                                }
+
+                                if (loggedIn && forumData.liked) {
+                                    TextMenuItem(text = R.string.button_unfollow, onClick = unlikeDialogState::show)
+                                }
+
+                                if (loggedIn && !forumSignFollowVisibility) {
+                                    ForumSignFollowMenuItem(forumData, viewModel::onLikeForum, viewModel::onSignIn)
+                                }
+                            },
+                            triggerShape = CircleShape,
+                            triggerIcon = Icons.Rounded.MoreVert,
+                            triggerContentDescription = stringResource(id = R.string.btn_more),
+                            content = MoreMenuItem,
+                        )
+                    },
+                    expandedHeight = ForumAppbarExpandHeight,
+                    colors = barColors,
+                    scrollBehavior = scrollBehavior,
+                )  {
+                    ForumTab(
+                        modifier = Modifier.fillMaxWidth(),
+                        pagerState = pagerState,
+                        tabs = forumTabs,
+                        sortTypes = forumSortTypes,
+                        onSortTypeChanged = { newSortType ->
+                            val currentTabId = forumTabs[pagerState.currentPage].tabId
+                            viewModel.onSortTypeChanged(currentTabId, newSortType)
+                            forumSortTypes[currentTabId] = newSortType
+                        },
+                        backdrop = barBackdrop,
+                    )
+
+                    val classifyVisible by remember { derivedStateOf { pagerState.currentPage == TAB_FORUM_GOOD } }
+                    val goodClassifies = uiState.forum?.goodClassifies ?: return@CollapsingAvatarTopAppBar
+                    // Compose classify inside TopBar for background blur
+                    AnimatedVisibility(visible = classifyVisible) {
+                        ClassifyTabs(
+                            goodClassifies = goodClassifies,
+                            selectedItem = uiState.goodClassifyId,
+                            onSelected = viewModel::onGoodClassifyChanged
                         )
                     }
-
-                    ActionItem(
-                        icon = Icons.Rounded.Search,
-                        contentDescription = R.string.btn_search_in_forum,
-                        onClick = { navigator.navigateDebounced(ForumSearchPost(forumName, forumData.id)) }
-                    )
-
-                    ClickMenu(
-                        menuContent = {
-                            TextMenuItem(text = R.string.title_share, onClick = viewModel::shareForum)
-
-                            TextMenuItem(text = R.string.title_send_to_desktop) {
-                                viewModel.sendToDesktop(context.getString(R.string.title_forum, forumData.name))
-                            }
-
-                            if (loggedIn && forumData.liked) {
-                                TextMenuItem(text = R.string.button_unfollow, onClick = unlikeDialogState::show)
-                            }
-
-                            if (loggedIn && !forumSignFollowVisibility) {
-                                ForumSignFollowMenuItem(forumData, viewModel::onLikeForum, viewModel::onSignIn)
-                            }
-                        },
-                        triggerShape = CircleShape,
-                        content = MoreMenuItem,
-                    )
-                },
-                expandedHeight = ForumAppbarExpandHeight,
-                colors = TiebaLiteTheme.topAppBarColors,
-                scrollBehavior = scrollBehavior,
-            )  {
-                ForumTab(
-                    modifier = Modifier.fillMaxWidth(),
-                    pagerState = pagerState,
-                    tabs = forumTabs,
-                    sortTypes = forumSortTypes,
-                    onSortTypeChanged = { newSortType ->
-                        val currentTabId = forumTabs[pagerState.currentPage].tabId
-                        viewModel.onSortTypeChanged(currentTabId, newSortType)
-                        forumSortTypes[currentTabId] = newSortType
-                    },
-                )
-
-                val classifyVisible by remember { derivedStateOf { pagerState.currentPage == TAB_FORUM_GOOD } }
-                val goodClassifies = uiState.forum?.goodClassifies ?: return@CollapsingAvatarTopAppBar
-                // Compose classify inside TopBar for background blur
-                AnimatedVisibility(visible = classifyVisible) {
-                    ClassifyTabs(
-                        goodClassifies = goodClassifies,
-                        selectedItem = uiState.goodClassifyId,
-                        onSelected = viewModel::onGoodClassifyChanged
-                    )
                 }
             }
         },
         snackbarHostState = snackbarHostState,
         snackbarHost = { SwipeToDismissSnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            if (forumData == null) return@BlurScaffold
+            if (forumData == null) return@MyScaffold
             // FAB visibility: no error, scrolling forward, pager is not scrolling
             val fabVisible by remember {
                 derivedStateOf {
@@ -438,12 +481,14 @@ fun ForumPage(
         StateScreen(
             modifier = Modifier
                 .fillMaxSize()
+                // Feed the progressive blur behind the app bar
+                .miuixLayerBackdrop(barBackdrop)
                 .nestedScroll(connection = scrollOrientationConnection)
                 .nestedScroll(connection = scrollBehavior.nestedScrollConnection),
             isLoading = forumData == null,
             error = uiState.error,
             loadingScreen = {
-                ForumThreadsPlaceholder(threadCount = if (isWindowHeightCompact()) 4 else 8)
+                ForumThreadsPlaceholder()
             },
             screenPadding = contentPadding
         ) {
@@ -583,7 +628,7 @@ private fun ForumFAB(
     val items = remember {
         persistentListOf(
             Triple(ForumFAB.POST, Icons.Rounded.PostAdd, context.getString(R.string.btn_post)),
-            Triple(ForumFAB.REFRESH, Icons.Rounded.Refresh, context.getString(R.string.btn_refresh)),
+            Triple(ForumFAB.REFRESH, MiuixIcons.Refresh, context.getString(R.string.btn_refresh)),
             Triple(ForumFAB.BACK_TO_TOP, Icons.Rounded.VerticalAlignTop, context.getString(R.string.btn_back_to_top)),
         )
     }
@@ -601,7 +646,7 @@ private fun ForumFAB(
             button = { DefaultToggleFloatingActionButton(expanded, onExpandChanged) },
         ) {
             items.fastForEach { (forumFab, icon, menuText) ->
-                FloatingActionButtonMenuItem(
+                DefaultFloatingActionButtonMenuItem(
                     onClick = {
                         onExpandChanged(false)
                         onClick(forumFab)
@@ -639,12 +684,10 @@ private fun ClassifyTabs(
 }
 
 @Composable
-private fun ForumThreadsPlaceholder(modifier: Modifier = Modifier, threadCount: Int) {
-    Container(modifier = modifier) {
-        Column {
-            repeat(times = threadCount) {
-                FeedCardPlaceholder()
-            }
-        }
+private fun ForumThreadsPlaceholder(modifier: Modifier = Modifier) {
+    // Was `repeat(threadCount) { FeedCardPlaceholder() }`; a spinner is a single element, so the
+    // whole block collapses into one centred ring rather than N of them.
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        MiuixLoadingIndicator()
     }
 }

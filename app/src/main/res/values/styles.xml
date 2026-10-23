@@ -10,10 +10,15 @@
         <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 
+    <!--
+        看图页的进出只让看图页自己的窗口淡入 / 淡出（由 Compose 里复制的那张图托住接缝）。
+        列表窗口那一半不能跟着淡：两边同时淡，中间那一帧会整体变暗，看着就像闪一下，
+        而且列表窗口的淡入会让复制的那张图晚半拍才出现，退回小图的动画会显得断掉。
+    -->
     <style name="Animation.Fade" parent="@android:style/Animation.Activity">
         <item name="android:activityOpenEnterAnimation">@anim/anim_fade_in</item>
-        <item name="android:activityOpenExitAnimation">@anim/anim_fade_out</item>
-        <item name="android:activityCloseEnterAnimation">@anim/anim_fade_in</item>
+        <item name="android:activityOpenExitAnimation">@null</item>
+        <item name="android:activityCloseEnterAnimation">@null</item>
         <item name="android:activityCloseExitAnimation">@anim/anim_fade_out</item>
     </style>
 

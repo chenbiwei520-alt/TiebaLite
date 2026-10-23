@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post.ui.page.settings.theme
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,7 +7,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
@@ -23,11 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastRoundToInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -36,16 +32,35 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.theme.FloatProducer
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.toastShort
-import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixBackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.NegativeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.PositiveButton
-import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
 import kotlin.math.abs
+import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
+import top.yukonga.miuix.kmp.basic.Slider
+import top.yukonga.miuix.kmp.basic.SliderDefaults
+import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
+import top.yukonga.miuix.kmp.squircle.squircleBackground
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private const val FONT_SCALE_MIN = 0.8f
 private const val FONT_SCALE_MAX = 1.6f // Maximum 2.0f
 private const val FONT_SCALE_STEP = FONT_SCALE_MAX - FONT_SCALE_MIN
+
+/** Slider progress domain; see [Float.toProgress] and [Float.toFontScale]. */
+private const val FONT_SCALE_PROGRESS_MAX = 10f
+
+/** Amount of intervals between the smallest and largest font scale, i.e. 8 intervals / 9 sizes. */
+private const val FONT_SCALE_INTERVALS = 8
+
+/**
+ * The selectable font sizes as slider positions, evenly spread over 0f..[FONT_SCALE_PROGRESS_MAX].
+ *
+ * These are passed as Miuix [Slider] key points so the slider shows one indicator per available size.
+ */
+private val FontScaleKeyPoints: List<Float> =
+    List(FONT_SCALE_INTERVALS + 1) { it * FONT_SCALE_PROGRESS_MAX / FONT_SCALE_INTERVALS }
 
 // Progress to font scale
 private fun Float.toFontScale() = FONT_SCALE_MIN + (this * FONT_SCALE_STEP).fastRoundToInt() / 10f // Round to one decimal
@@ -65,35 +80,40 @@ private fun getSizeTextHint(sliderPosition: Float): Int {
 }
 
 @Composable
-fun AppFontPage(onBack: () -> Unit, vm: AppFontViewModel = hiltViewModel()) {
-    MyScaffold(
+fun AppFontPage(
+    onBack: () -> Unit,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
+    vm: AppFontViewModel = hiltViewModel(),
+) {
+    MiuixScaffold(
         topBar = {
-            TitleCentredToolbar(
-                title =  stringResource(id = R.string.title_custom_font_size),
-                navigationIcon = {
-                    BackNavigationIcon(onBackPressed = onBack)
-                }
-            )
+            if (!paneMode) {
+                // Miuix large title bar: the enlarged title matches the HyperOS sub-page header
+                MiuixTopAppBar(
+                    title = stringResource(id = R.string.title_custom_font_size),
+                    navigationIcon = { MiuixBackNavigationIcon(onBackPressed = onBack) },
+                )
+            }
         },
-        content = { paddingValues ->
-            val context = LocalContext.current
-            val fontScale by vm.fontScale.collectAsStateWithLifecycle()
-            val fontScaleChanged by vm.fontScaleChanged.collectAsStateWithLifecycle()
+    ) { paddingValues ->
+        val context = LocalContext.current
+        val fontScale by vm.fontScale.collectAsStateWithLifecycle()
+        val fontScaleChanged by vm.fontScaleChanged.collectAsStateWithLifecycle()
 
-            AppFontContent(
-                modifier = Modifier.padding(paddingValues),
-                fontScale = fontScale,
-                onFontScaleChanged = vm::onFontScaleChanged,
-                isFontScaleChanged = fontScaleChanged,
-                onCancel = onBack,
-                onSave = {
-                    vm.onSave()
-                    context.toastShort(R.string.toast_after_change_will_restart)
-                    (context.applicationContext as App).removeAllActivity()
-                }
-            )
-        }
-    )
+        AppFontContent(
+            modifier = Modifier.padding(paddingValues),
+            fontScale = fontScale,
+            onFontScaleChanged = vm::onFontScaleChanged,
+            isFontScaleChanged = fontScaleChanged,
+            onCancel = onBack,
+            onSave = {
+                vm.onSave()
+                context.toastShort(R.string.toast_after_change_will_restart)
+                (context.applicationContext as App).removeAllActivity()
+            }
+        )
+    }
 }
 
 @Composable
@@ -160,11 +180,12 @@ private fun TextHintSlider(
         Text(
             text = stringResource(id = hintText),
             modifier = Modifier.align(Alignment.CenterHorizontally),
-            color = MaterialTheme.colorScheme.primary,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
+            color = MiuixTheme.colorScheme.primary,
+            style = MiuixTheme.textStyles.title3,
         )
         Spacer(modifier = Modifier.height(12.dp))
+        // Miuix slider with one key point per selectable font size, so the available sizes are
+        // visible on the track instead of only being discoverable by dragging.
         Slider(
             value = progress,
             onValueChange = {
@@ -173,8 +194,11 @@ private fun TextHintSlider(
                 }
                 progress = it
             },
-            steps = 7,
-            valueRange = 0f..10f,
+            valueRange = 0f..FONT_SCALE_PROGRESS_MAX,
+            steps = FONT_SCALE_INTERVALS - 1,
+            showKeyPoints = true,
+            keyPoints = FontScaleKeyPoints,
+            hapticEffect = SliderDefaults.SliderHapticEffect.Step,
         )
     }
 }
@@ -190,7 +214,7 @@ private fun ChatBubbleText(
     Text(
         text = text,
         modifier = modifier
-            .background(color = containerColor, shape = MaterialTheme.shapes.medium)
+            .squircleBackground(containerColor, SquircleCornerRadius.Medium)
             .padding(8.dp),
         color = contentColor,
         fontSize = fontSize,

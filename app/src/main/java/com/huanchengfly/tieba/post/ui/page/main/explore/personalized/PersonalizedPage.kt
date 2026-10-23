@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,7 +22,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -45,7 +45,6 @@ import com.huanchengfly.tieba.post.arch.collectUiEventWithLifecycle
 import com.huanchengfly.tieba.post.navigateDebounced
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.toastShort
-import com.huanchengfly.tieba.post.ui.models.explore.Dislike
 import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.main.explore.ConsumeThreadPageResult
 import com.huanchengfly.tieba.post.ui.page.main.explore.LaunchedFabStateEffect
@@ -53,6 +52,7 @@ import com.huanchengfly.tieba.post.ui.page.main.explore.createThreadClickListene
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.CardHorizontalSpacing
+import top.yukonga.miuix.kmp.basic.Card
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.StrongBox
@@ -141,13 +141,13 @@ fun PersonalizedPage(
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             val data = uiState.data
             val isLoadingMore = uiState.isLoadingMore
-            val dislikeReasons = remember { mutableStateSetOf<Dislike>() }
             val itemPlacementSpec = MaterialTheme.motionScheme.slowSpatialSpec<IntOffset>()
 
             SwipeUpLazyLoadColumn(
                 modifier = modifier.fillMaxSize().testColumn(),
                 state = listState,
                 contentPadding = contentPadding,
+                verticalArrangement = Arrangement.spacedBy(20.dp),
                 isLoading = isLoadingMore,
                 onLazyLoad = viewModel::onLoadMore.takeUnless { isRefreshing },
                 bottomIndicator = defaultBottomIndicator,
@@ -163,6 +163,8 @@ fun PersonalizedPage(
                                 .animateItem(fadeInSpec = null, placementSpec = itemPlacementSpec, fadeOutSpec = null),
                             hideBlockedContent = hideBlockedContent
                         ) {
+                            // One Miuix group card per feed item, no divider lines between them
+                            Card(modifier = Modifier.fillMaxWidth()) {
                             FeedCard(
                                 thread = thread,
                                 onClick = threadClickListeners.onClicked,
@@ -171,35 +173,27 @@ fun PersonalizedPage(
                                 onClickUser = threadClickListeners.onAuthorClicked,
                                 onClickForum = threadClickListeners.onForumClicked,
                                 dislikeAction = {
-                                    if (thread.dislikeResource.isNullOrEmpty()) return@FeedCard
-                                    Dislike(
-                                        dislikeResource = thread.dislikeResource,
-                                        selectedReasons = dislikeReasons,
-                                        onDismiss = dislikeReasons::clear,
-                                        onDislikeSelected = {
-                                            if (it in dislikeReasons) {
-                                                dislikeReasons.remove(it)
-                                            } else {
-                                                dislikeReasons.add(it)
-                                            }
-                                        },
-                                    ) {
-                                        viewModel.onThreadDislike(thread, dislikeReasons.toList())
+                                    // Single-action popup: submit the dislike without a reason
+                                    // checklist (the reason toggles never affected the submission).
+                                    Dislike {
+                                        viewModel.onThreadDislike(thread, emptyList())
                                     }
                                 },
-                                cardDivider = !isHidden && index < data.lastIndex,
                             )
+                            }
                         }
                     }
                 }
             }
 
-            StrongBox {
+            // 提示条要贴在整页顶部居中。原来 align 写在 AnimatedVisibility 上，而外层
+            // StrongBox 是个只包内容宽度的小 Box（默认 TopStart 摆放），居中只在小盒子内部生效，
+            // 于是气泡一直停在左上角。对齐要提到 StrongBox 这一层。
+            StrongBox(modifier = Modifier.align(Alignment.TopCenter)) {
                 AnimatedVisibility(
                     visible = refreshCount > 0,
                     enter = fadeIn() + slideInVertically(),
                     exit = slideOutVertically() + fadeOut(),
-                    modifier = Modifier.align(Alignment.TopCenter)
                 ) {
                     RefreshTip(
                         modifier = Modifier

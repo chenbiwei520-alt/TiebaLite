@@ -5,6 +5,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.huanchengfly.tieba.post.navigateDebounced
 import com.huanchengfly.tieba.post.repository.user.SettingsRepository
+import com.huanchengfly.tieba.post.ui.common.windowsizeclass.isWindowWidthCompact
 import com.huanchengfly.tieba.post.ui.page.settings.blocklist.ForumBlockListPage
 import com.huanchengfly.tieba.post.ui.page.settings.blocklist.KeywordBlockListPage
 import com.huanchengfly.tieba.post.ui.page.settings.blocklist.UserBlockListPage
@@ -57,11 +58,21 @@ sealed interface SettingsDestination {
 
     @Serializable
     object WorkInfo: SettingsDestination
+
+    @Serializable
+    object LogViewer: SettingsDestination
 }
 
 fun NavGraphBuilder.settingsGraph(navController: NavController, settingsRepo: SettingsRepository) {
+    // 设置分区入口：宽屏（≥600.dp，横屏手机与平板）走两栏的 [TabletSettingsScreen]——左栏平铺入口、
+    // 右栏直接渲染内容，全程不做页面跳转；窄屏保持原来的列表逐页导航。
+    // 下面其它目的地仍然是窄屏路径的一部分，平板两栏页的右栏通过 `when (selected)` 直接渲染同样的页面。
     composable<SettingsDestination.Settings> {
-        SettingsPage(navController)
+        if (isWindowWidthCompact()) {
+            SettingsPage(navController)
+        } else {
+            TabletSettingsScreen(navigator = navController, settingsRepo = settingsRepo)
+        }
     }
 
     composable<SettingsDestination.About> {
@@ -124,5 +135,9 @@ fun NavGraphBuilder.settingsGraph(navController: NavController, settingsRepo: Se
 
     composable<SettingsDestination.WorkInfo> {
         WorkInfoPage(onBack = navController::navigateUp)
+    }
+
+    composable<SettingsDestination.LogViewer> {
+        LogViewerPage(onBack = navController::navigateUp)
     }
 }

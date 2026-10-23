@@ -55,6 +55,8 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.compose.buttons.PlaybackSpeedControl
 import androidx.media3.ui.compose.material3.R
 import androidx.media3.ui.compose.state.PlaybackSpeedState
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.CONTROLS_VISIBILITY_TIMEOUT_MS
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.LocalPlayerGestureState
@@ -290,7 +292,7 @@ private fun PlaybackSpeedPresets(
           state.updatePlaybackSpeed(speed)
           onPresetSelected()
         },
-        shape = MaterialTheme.shapes.small,
+        shape = SquircleShape(SquircleCornerRadius.Small),
         contentPadding = ButtonDefaults.TextButtonContentPadding,
       ) {
         Text(

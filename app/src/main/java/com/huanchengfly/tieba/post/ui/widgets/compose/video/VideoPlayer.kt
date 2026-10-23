@@ -22,8 +22,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.PictureInPictureAlt
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.ScreenRotation
@@ -92,6 +90,7 @@ import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.common.theme.compose.clickableNoIndication
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onCase
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onNotNull
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultErrorResource
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.buttons.ContentScaleButton
@@ -99,6 +98,11 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.video.buttons.LabeledProgr
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.buttons.MediaFormatsButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.buttons.PlayPauseButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.buttons.PlaybackSpeedBottomSheetButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Download
+import top.yukonga.miuix.kmp.squircle.squircleBackground
+
 
 internal val defaultControlButtonColors: IconButtonColors
     @Composable get() = IconButtonDefaults.iconButtonColors(
@@ -169,7 +173,7 @@ internal fun PreviewVideoPlayer(
            modifier = Modifier
                .align(Alignment.TopEnd)
                .padding(12.dp)
-               .background(colors.containerColor, MaterialTheme.shapes.extraSmall)
+               .squircleBackground(colors.containerColor, SquircleCornerRadius.ExtraSmall)
                .padding(horizontal = 6.dp, vertical = 2.dp),
        ) {
            PositionAndDurationText(player, color = colors.contentColor)
@@ -188,6 +192,9 @@ internal fun PreviewVideoPlayer(
  * @param player The [Player] instance to be controlled and whose content is displayed.
  * @param modifier The [Modifier] to be applied to the outer [Box].
  * @param contentScale The initial scaling mode to apply to the content within the [ContentFrame].
+ * @param surfaceType The type of surface used for video playback. Use
+ *   [SURFACE_TYPE_TEXTURE_VIEW] when the container is clipped to a rounded shape or animated,
+ *   because a [android.view.SurfaceView] is composed outside of the Compose clip.
  * @param gestureState The [PlayerGestureState] that manages gesture interactions such as seek
  *   using dragging and tapping gestures.
  * @param pipState The [PictureInPictureState] for picture-in-picture mode button.
@@ -200,6 +207,7 @@ internal fun VideoPlayer(
     player: Player,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Fit,
+    surfaceType: @SurfaceType Int = SURFACE_TYPE_SURFACE_VIEW,
     gestureState: PlayerGestureState = rememberPlayerGestureState(player),
     pipState: PictureInPictureState = rememberPictureInPictureState(player),
     thumbnailUrl: String? = null,
@@ -208,19 +216,61 @@ internal fun VideoPlayer(
     },
 ) {
     var currentContentScale by remember { mutableStateOf(contentScale) }
+
+    Box(modifier = modifier) {
+        VideoContent(
+            player = player,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = currentContentScale,
+            surfaceType = surfaceType,
+            thumbnailUrl = thumbnailUrl,
+            gestureState = gestureState,
+            pipState = pipState,
+        )
+        if (!pipState.isInPictureInPictureMode) {
+            VideoControls(
+                player = player,
+                gestureState = gestureState,
+                contentScale = currentContentScale,
+                onContentScaleSelected = { currentContentScale = it },
+                pipState = pipState,
+                topControls = topControls,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
+
+/**
+ * 视频画面本身：视频 Surface、首帧前的封面兜底与手势，不含任何控制条。
+ *
+ * 视频形变叠层 [com.huanchengfly.tieba.post.ui.page.videoview.VideoViewer] 需要让画面跟着容器
+ * 矩形一起飞、控制条却留在整屏，所以把画面与控制条拆成两个可以各自摆放的组合项。对位 Matter
+ * 的 `weiboVideoSharedBounds`：共享元素里只有播放器画面，控制条属于目标页面。
+ */
+@Composable
+internal fun VideoContent(
+    player: Player,
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Fit,
+    surfaceType: @SurfaceType Int = SURFACE_TYPE_SURFACE_VIEW,
+    thumbnailUrl: String? = null,
+    gestureState: PlayerGestureState = rememberPlayerGestureState(player),
+    pipState: PictureInPictureState? = null,
+) {
     val presentationState = rememberPresentationState(player)
 
     Box(modifier = modifier) {
         PlayerSurface(
             player = player,
-            surfaceType = SURFACE_TYPE_SURFACE_VIEW,
+            surfaceType = surfaceType,
             modifier = Modifier
-                .resizeWithContentScale(currentContentScale, presentationState.videoSizeDp)
-                .onCase(pipState.isPipSupported) {
+                .resizeWithContentScale(contentScale, presentationState.videoSizeDp)
+                .onCase(pipState?.isPipSupported == true) {
                     onGloballyPositioned { layoutCoordinates ->
                         val videoSize = presentationState.videoSizeDp?.roundToIntSize() ?: return@onGloballyPositioned
                         val sourceRect = layoutCoordinates.boundsInWindow().toAndroidRectF().toRect()
-                        pipState.setVideoViewRect(sourceRect, videoSize)
+                        pipState?.setVideoViewRect(sourceRect, videoSize)
                     }
                 }
         )
@@ -230,7 +280,7 @@ internal fun VideoPlayer(
                 VideoThumbnail(
                     modifier = shutterModifier,
                     thumbnailUrl = thumbnailUrl,
-                    contentScale = currentContentScale,
+                    contentScale = contentScale,
                     onClick = { Util.handlePlayButtonAction(player) }
                 )
             } else {
@@ -238,32 +288,52 @@ internal fun VideoPlayer(
             }
         }
 
-        if (pipState.isInPictureInPictureMode) return@Box // Disable all gestures in PIP mode
+        if (pipState?.isInPictureInPictureMode == true) return@Box // Disable all gestures in PIP mode
 
         MediaControlGestures(Modifier.matchParentSize(), gestureState)
+    }
+}
 
-        CompositionLocalProvider(LocalPlayerGestureState provides gestureState) {
-            AnimatedVisibility(gestureState.controlsVisible, enter = fadeIn(), exit = fadeOut()) {
-                Box(
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    if (topControls != null) {
-                        Box(Modifier.align(Alignment.TopStart)) {
-                            topControls(pipState)
-                        }
+/**
+ * 控制条（顶部按钮、中央播放控件、底部进度条），铺满它所在的容器。
+ *
+ * 与 [VideoContent] 分开摆放：视频形变叠层把这一层铺在整屏上，控制条就不会跟着容器矩形一起
+ * 缩放到卡片大小。显隐沿用 [PlayerGestureState.controlsVisible]（点击显隐 + 自动隐藏）。
+ */
+@Composable
+internal fun VideoControls(
+    player: Player,
+    gestureState: PlayerGestureState,
+    contentScale: ContentScale,
+    onContentScaleSelected: (ContentScale) -> Unit,
+    modifier: Modifier = Modifier,
+    pipState: PictureInPictureState,
+    topControls: (@Composable (PictureInPictureState) -> Unit)? = null,
+) {
+    CompositionLocalProvider(LocalPlayerGestureState provides gestureState) {
+        AnimatedVisibility(
+            visible = gestureState.controlsVisible,
+            modifier = modifier,
+            enter = fadeIn(),
+            exit = fadeOut(),
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (topControls != null) {
+                    Box(Modifier.align(Alignment.TopStart)) {
+                        topControls(pipState)
                     }
-
-                    CenterControls(player, modifier = Modifier.align(Alignment.Center))
-
-                    BottomControlsWithLabeledProgress(
-                        player = player,
-                        contentScale = currentContentScale,
-                        onContentScaleSelected = { currentContentScale = it },
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .windowInsetsPadding(NavigationBarDefaults.windowInsets),
-                    )
                 }
+
+                CenterControls(player, modifier = Modifier.align(Alignment.Center))
+
+                BottomControlsWithLabeledProgress(
+                    player = player,
+                    contentScale = contentScale,
+                    onContentScaleSelected = onContentScaleSelected,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .windowInsetsPadding(NavigationBarDefaults.windowInsets),
+                )
             }
         }
     }
@@ -302,7 +372,7 @@ fun TopControls(
     ) {
         if (onBack != null) {
             ActionItem(
-                icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                icon = MiuixIcons.Back,
                 contentDescription = stringResource(R.string.btn_close),
                 colors = IconButtonDefaults.filledIconButtonColors(),
                 onClick = onBack,
@@ -313,7 +383,7 @@ fun TopControls(
         if (onDownload != null) {
             ActionItem(
                 onClick = onDownload,
-                icon = Icons.Rounded.Download,
+                icon = MiuixIcons.Download,
                 contentDescription = stringResource(R.string.btn_download),
                 colors = topButtonColors,
             )

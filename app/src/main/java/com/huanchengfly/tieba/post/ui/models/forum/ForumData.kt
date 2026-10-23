@@ -2,7 +2,6 @@ package com.huanchengfly.tieba.post.ui.models.forum
 
 import androidx.compose.runtime.Immutable
 import com.huanchengfly.tieba.post.api.models.protos.FrsTabInfo
-import com.huanchengfly.tieba.post.api.models.protos.frsPage.NavTabInfo
 
 // Classify name, Classify ID
 typealias GoodClassify = Pair<String, Int>

@@ -23,11 +23,10 @@ enum class NavigationLabel {
  * @param appIconThemed 应用图标使用动态取色
  * @param bottomNavFloating 主页底部导航栏悬浮模式
  * @param bottomNavLabel 主页底部导航栏标签显示模式
- * @param darkAmoled 纯黑背景颜色
  * @param darkPreference 夜间模式偏好
  * @param darkenImage 夜间模式压暗缩略图
+ * @param defaultStartPage 启动首选页，[MainDestinationOrder] 的下标（0=首页 1=动态 2=消息 3=我的）
  * @param hideExplore 隐藏主页「动态」入口
- * @param reduceEffect 减弱模糊效果
  * @param reduceMotion 减弱动态效果
  * @param setupFinished 设置向导已完成
  * @param homeForumList 吧列表单列显示
@@ -39,13 +38,14 @@ data class UISettings(
     val appIconThemed: Boolean = false,
     val bottomNavFloating: Boolean = false,
     val bottomNavLabel: NavigationLabel = NavigationLabel.ALWAYS,
-    val darkAmoled: Boolean = false,
     val darkPreference: DarkPreference = DarkPreference.FOLLOW_SYSTEM,
     val darkenImage: Boolean = true,
+    val defaultStartPage: Int = 0,
     val hideExplore: Boolean = false,
-    val reduceEffect: Boolean = false,
     val reduceMotion: Boolean = false,
     val setupFinished: Boolean = false,
     val homeForumList: Boolean = false,
+    /** 横屏侧边栏（NavigationRail）是否显示文字标签 */
+    val railExpanded: Boolean = false,
     val showHistoryInHome: Boolean = true,
 )

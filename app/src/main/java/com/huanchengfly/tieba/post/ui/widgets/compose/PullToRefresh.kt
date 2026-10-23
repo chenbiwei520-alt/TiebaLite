@@ -3,46 +3,22 @@ package com.huanchengfly.tieba.post.ui.widgets.compose
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshState
-import androidx.compose.material3.pulltorefresh.pullToRefresh
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.huanchengfly.tieba.post.PaddingNone
+import top.yukonga.miuix.kmp.basic.PullToRefresh
 
 /**
- * compose/material3/material3/src/commonMain/kotlin/androidx/compose/material3/pulltorefresh/PullToRefresh.kt
+ * Pull-to-refresh container backed by Miuix's [PullToRefresh].
  *
- * commit 576eeec 'Bump the version number for Material3 to 1.4.0-rc01'.
- * on branch androidx-compose-material3-release
+ * This used to be a copy of Material3's `PullToRefresh.kt` (the old file documented its upstream
+ * commit) that drew `PullToRefreshDefaults.LoadingIndicator` — the M3 Expressive circular/polygon
+ * glyph, which read as a foreign shape next to the MIUI surfaces. Miuix's component owns the whole
+ * indicator: distance fraction, threshold crossing, the rotating arc and the "松开刷新" label, all
+ * driven by MIUI tokens and motion curves.
  *
- * 0Ranko0p changes:
- *   1. Add ability to enable/disable pullToRefresh
- *   2. Apply content paddings to indicator
- *   3. Use M3 Expressive LoadingIndicator by default
- */
-
-/**
- * [PullToRefreshBox] is a container that expects a scrollable layout as content and adds gesture
- * support for manually refreshing when the user swipes downward at the beginning of the content. By
- * default, it uses [PullToRefreshDefaults.LoadingIndicator] as the refresh indicator, but you may also
- * choose to set your own indicator.
- *
- * @param isRefreshing whether a refresh is occurring
- * @param onRefresh callback invoked when the user gesture crosses the threshold, thereby requesting
- *   a refresh.
- * @param modifier the [Modifier] to be applied to this container
- * @param state the state that keeps track of distance pulled
- * @param contentAlignment The default alignment inside the Box.
- * @param indicator the indicator that will be drawn on top of the content when the user begins a
- *   pull or a refresh is occurring
- * @param content the content of the pull refresh container, typically a scrollable layout such as
- *   [LazyColumn] or a layout using [Modifier.verticalScroll]
+ * `state` and `indicator` from the old signature are gone. Miuix's component owns both, and none of
+ * the call sites passed them.
  */
 @Composable
 fun PullToRefreshBox(
@@ -50,29 +26,17 @@ fun PullToRefreshBox(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    state: PullToRefreshState = rememberPullToRefreshState(),
-    contentAlignment: Alignment = Alignment.TopCenter,
     contentPadding: PaddingValues = PaddingNone,
-    indicator: @Composable BoxScope.() -> Unit = {
-        PullToRefreshDefaults.LoadingIndicator(
-            state = state,
-            isRefreshing = isRefreshing,
-            elevation = PullToRefreshDefaults.Elevation,
-        )
-    },
     content: @Composable BoxScope.() -> Unit,
 ) {
     if (enabled) {
-        Box(
-            modifier.pullToRefresh(state = state, isRefreshing = isRefreshing, onRefresh = onRefresh),
-            contentAlignment = contentAlignment,
-        ) {
-            content()
-            Box(
-                modifier = Modifier.padding(contentPadding),
-                content = indicator
-            )
-        }
+        PullToRefresh(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            modifier = modifier,
+            contentPadding = contentPadding,
+            content = { Box(content = content) },
+        )
     } else {
         Box(modifier = modifier, content = content)
     }

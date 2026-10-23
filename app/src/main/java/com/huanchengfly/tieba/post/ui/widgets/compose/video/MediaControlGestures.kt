@@ -19,8 +19,6 @@ import androidx.compose.foundation.layout.safeGestures
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeDown
-import androidx.compose.material.icons.automirrored.rounded.VolumeOff
-import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.rounded.BrightnessHigh
@@ -55,6 +53,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Formatter
 import java.util.Locale
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.VolumeOff
+import top.yukonga.miuix.kmp.icon.extended.VolumeUp
 
 @Composable
 fun MediaControlGestures(
@@ -372,9 +373,9 @@ private val VolumeAndBrightnessState.volumeIconState: State<ImageVector>
     @Composable get() = remember {
         derivedStateOf {
             if (currentVolume == 0f) {
-                Icons.AutoMirrored.Rounded.VolumeOff
+                MiuixIcons.VolumeOff
             } else if (currentVolume > 0.6f) {
-                Icons.AutoMirrored.Rounded.VolumeUp
+                MiuixIcons.VolumeUp
             } else {
                 Icons.AutoMirrored.Rounded.VolumeDown
             }

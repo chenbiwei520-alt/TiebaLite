@@ -42,7 +42,6 @@ import androidx.navigation.NavController
 import androidx.navigation.NavDeepLinkRequest
 import androidx.navigation.NavOptions
 import androidx.navigation.compose.rememberNavController
-import com.huanchengfly.tieba.post.MacrobenchmarkConstant.EXTRA_REDUCE_EFFECT
 import com.huanchengfly.tieba.post.MacrobenchmarkConstant.EXTRA_WELCOME_SETUP
 import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
 import com.huanchengfly.tieba.post.arch.BaseComposeActivity
@@ -55,11 +54,15 @@ import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.LocalPbInlineContentCache
 import com.huanchengfly.tieba.post.ui.common.PbInlineContentCache.Companion.rememberPbInlineContentCache
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onCase
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
 import com.huanchengfly.tieba.post.ui.models.settings.HabitSettings
 import com.huanchengfly.tieba.post.ui.models.settings.UISettings
 import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.RootNavGraph
 import com.huanchengfly.tieba.post.ui.page.TB_LITE_DOMAIN
+import com.huanchengfly.tieba.post.ui.page.photoview.PhotoViewerHost
+import com.huanchengfly.tieba.post.ui.page.videoview.VideoViewerHost
 import com.huanchengfly.tieba.post.ui.page.settings.theme.TranslucentThemeBackground
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
@@ -70,6 +73,8 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.StrongBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.dialogs.AnyPopDialogProperties
 import com.huanchengfly.tieba.post.ui.widgets.compose.dialogs.DirectionState
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.LocalMorphState
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.rememberMorphState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.LocalVideoPreviewState
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.rememberVideoPreviewState
@@ -121,9 +126,6 @@ class MainActivityV2 : BaseComposeActivity() {
 
         intent?.run {
             if (MacrobenchmarkConstant.TRACE_ENABLED) {
-                extras?.getBoolean(EXTRA_REDUCE_EFFECT, false)?.let { reduceEffect ->
-                    viewModel.settingsRepository.uiSettings.save { it.copy(reduceEffect = reduceEffect) }
-                }
                 welcomeScreen = extras?.getBoolean(EXTRA_WELCOME_SETUP, false)
             }
             ShortcutInitializer.getTbShortcut(this)?.also { onNewShortcut(it) }
@@ -153,8 +155,7 @@ class MainActivityV2 : BaseComposeActivity() {
                 pendingAppLink = appLinkToNavRoute(uri)
             }
             if (pendingDeepLink == null && pendingAppLink == null && uri.isHttp()) {
-                // TODO: Bug in Firefox custom Tab
-                // TiebaWebView.launchCustomTab(this, uri)
+                // TODO: Bug in Firefox custom Tab, so always open in our own WebView
                 pendingAppLink = Destination.WebView(initialUrl = uri.toString(), customClient = false)
             }
         } else {
@@ -164,8 +165,7 @@ class MainActivityV2 : BaseComposeActivity() {
 
     @Composable
     override fun Content() {
-        // val bottomSheetNavigator = rememberBottomSheetNavigator(skipPartiallyExpanded = true)
-        val navController = rememberNavController(/* bottomSheetNavigator */)
+        val navController = rememberNavController()
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
         val reduceMotion = uiState.uiSettings?.reduceMotion == true
 
@@ -198,13 +198,24 @@ class MainActivityV2 : BaseComposeActivity() {
                     intent.data = null
                 }
 
-                RootNavGraph(
-                    // bottomSheetNavigator = bottomSheetNavigator,
-                    navController = navController,
-                    reduceMotion = reduceMotion,
-                    settingsRepo = viewModel.settingsRepository,
-                    startDestination = if (setupFinished) Destination.Main else Destination.Welcome
-                )
+                // 全应用共享一份形变状态（Matter 的 ImageMorphState）：信息流卡片、卡牌堆与
+                // 看图浮层读的是同一份进度，展开/收拢才能接得上。
+                val morphState = rememberMorphState()
+                CompositionLocalProvider(LocalMorphState provides morphState) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        RootNavGraph(
+                            navController = navController,
+                            reduceMotion = reduceMotion,
+                            settingsRepo = viewModel.settingsRepository,
+                            startDestination = if (setupFinished) Destination.Main else Destination.Welcome
+                        )
+                        // 看图页是主窗口里的一层形变叠层，不是独立 Activity：这样返回手势走的是
+                        // 本窗口的分发链，图片还在加载时也能正常退出。
+                        PhotoViewerHost()
+                        // 视频的容器形变：与看图页同层，缩略图 → 全屏播放。
+                        VideoViewerHost()
+                    }
+                }
             }
         }
     }
@@ -319,14 +330,14 @@ class MainActivityV2 : BaseComposeActivity() {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                    shape = MaterialTheme.shapes.medium
+                    shape = SquircleShape(SquircleCornerRadius.Medium)
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         modifier = Modifier.padding(16.dp)
                     ) {
                         preview.icon?.let { icon ->
-                            val iconShape = MaterialTheme.shapes.extraSmall
+                            val iconShape = SquircleShape(SquircleCornerRadius.ExtraSmall)
                             if (icon.type == QuickPreviewUtil.Icon.TYPE_DRAWABLE_RES) {
                                 Avatar(data = icon.res, size = Sizes.Medium, shape = iconShape)
                             } else {

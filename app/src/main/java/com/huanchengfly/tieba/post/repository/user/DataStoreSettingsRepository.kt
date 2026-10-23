@@ -18,7 +18,6 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.google.android.material.color.utilities.Variant
 import com.huanchengfly.tieba.post.getColor
 import com.huanchengfly.tieba.post.putBoolean
 import com.huanchengfly.tieba.post.putColor
@@ -141,6 +140,7 @@ private object HabitSettingsTransformer : PreferenceTransformer<HabitSettings> {
             hideReplyWarning = it[booleanPreferencesKey(KEY_REPLY_HIDE_WARNING)] == true,
             imageLoadType = it[intPreferencesKey(KEY_IMAGE_LOAD_TYPE)] ?: ImageUtil.SETTINGS_SMART_ORIGIN,
             imageWatermarkType = it[intPreferencesKey(KEY_IMAGE_WATERMARK_TYPE)] ?: WaterType.FORUM_NAME,
+            incognitoMode = it[booleanPreferencesKey(KEY_INCOGNITO_MODE)] == true,
             showBothName = it[booleanPreferencesKey(KEY_SHOW_NICKNAME)] == true,
             stickyHeader = it[booleanPreferencesKey(KEY_STICKY_HEADER)] ?: true,
             videoAutoplay = it[booleanPreferencesKey(KEY_VIDEO_AUTOPLAY)] ?: true
@@ -157,6 +157,7 @@ private object HabitSettingsTransformer : PreferenceTransformer<HabitSettings> {
         it[booleanPreferencesKey(KEY_REPLY_HIDE_WARNING)] = habit.hideReplyWarning
         it[intPreferencesKey(KEY_IMAGE_LOAD_TYPE)] = habit.imageLoadType
         it[intPreferencesKey(KEY_IMAGE_WATERMARK_TYPE)] = habit.imageWatermarkType
+        it[booleanPreferencesKey(KEY_INCOGNITO_MODE)] = habit.incognitoMode
         it[booleanPreferencesKey(KEY_SHOW_NICKNAME)] = habit.showBothName
         it[booleanPreferencesKey(KEY_STICKY_HEADER)] = habit.stickyHeader
         it[booleanPreferencesKey(KEY_VIDEO_AUTOPLAY)] = habit.videoAutoplay
@@ -176,6 +177,7 @@ private object HabitSettingsTransformer : PreferenceTransformer<HabitSettings> {
 
     private const val KEY_FORUM_SORT_DEFAULT = "forum_sort_type"
     private const val KEY_IMAGE_LOAD_TYPE = "img_load_type"
+    private const val KEY_INCOGNITO_MODE = "incognito_mode"
     private const val KEY_IMAGE_WATERMARK_TYPE = "img_watermark"
     private const val KEY_POST_HIDE_MEDIA = "ui_post_hide_media"
     private const val KEY_REPLY_HIDE = "ui_reply_hide"
@@ -206,8 +208,6 @@ private object ThemeSettingsTransformer : PreferenceTransformer<ThemeSettings> {
 
         ThemeSettings(
             theme = it[intPreferencesKey(KEY_THEME)]?.let { i -> Theme.entries[i] } ?: Theme.BLUE,
-            customColor = it.getColor(KEY_CUSTOM_COLOR),
-            customVariant = it[intPreferencesKey(KEY_CUSTOM_VARIANT)]?.let { i -> Variant.entries[i] },
             transColor = it.getColor(KEY_TRANSLUCENT_COLOR) ?: TiebaBlue,
             transAlpha = transFilters?.let { value -> unpackFloat1(value) } ?: 1.0f,
             transBlur = transFilters?.let { value -> unpackFloat2(value) } ?: 0f,
@@ -218,8 +218,6 @@ private object ThemeSettingsTransformer : PreferenceTransformer<ThemeSettings> {
 
     override val set: (MutablePreferences, ThemeSettings) -> Unit = { it, theme ->
         it.putInt(KEY_THEME, theme.theme.ordinal)
-        it.putColor(KEY_CUSTOM_COLOR, theme.customColor)
-        it.putInt(KEY_CUSTOM_VARIANT, theme.customVariant?.ordinal)
         it.putColor(KEY_TRANSLUCENT_COLOR, theme.transColor)
         it.putLong(KEY_TRANSLUCENT_FILTERS, packFloats(theme.transAlpha, theme.transBlur))
         it[booleanPreferencesKey(KEY_TRANSLUCENT_DARK_COLOR_MODE)] = theme.transDarkColorMode
@@ -227,9 +225,6 @@ private object ThemeSettingsTransformer : PreferenceTransformer<ThemeSettings> {
     }
 
     private const val KEY_THEME = "theme" // Theme.ordinal
-    private const val KEY_CUSTOM_COLOR = "custom_primary_color"
-    private const val KEY_CUSTOM_VARIANT = "custom_variant" // Int: Variant.ordinal
-
     private const val KEY_TRANSLUCENT_FILTERS = "trans_filters" // packaged two float, alpha and blur
     private const val KEY_TRANSLUCENT_COLOR = "trans_primary_color"
 
@@ -249,14 +244,14 @@ private object UISettingsTransformer: PreferenceTransformer<UISettings> {
             appIconThemed = it[booleanPreferencesKey(KEY_APP_THEMED_ICON)] == true,
             bottomNavFloating = it[booleanPreferencesKey(KEY_BOTTOM_NAV_FLOATING)] == true,
             bottomNavLabel = NavigationLabel.entries[bottomNavLabelOrdinal],
-            darkAmoled = it[booleanPreferencesKey(KEY_DARK_AMOLED)] == true,
             darkPreference = DarkPreference.entries[darkPrefOrdinal],
             darkenImage = it[booleanPreferencesKey(KEY_DARKEN_IMAGE_ON_NIGHT)] ?: true,
+            defaultStartPage = it[intPreferencesKey(KEY_DEFAULT_START)] ?: 0,
             hideExplore = it[booleanPreferencesKey(KEY_HIDE_EXPLORE)] == true,
-            reduceEffect = it[booleanPreferencesKey(KEY_REDUCE_EFFECT)] ?: (DeviceUtils.PRODUCT_FIRST_API_LEVEL < Build.VERSION_CODES.S),
             reduceMotion = it[booleanPreferencesKey(KEY_REDUCE_MOTION)] ?: (DeviceUtils.PRODUCT_FIRST_API_LEVEL < Build.VERSION_CODES.S),
             setupFinished = it[booleanPreferencesKey(KEY_SETUP_FINISHED)] == true,
             homeForumList = it[booleanPreferencesKey(KEY_HOME_SINGLE_FORUM_LIST)] == true,
+            railExpanded = it[booleanPreferencesKey(KEY_RAIL_EXPANDED)] == true,
             showHistoryInHome = it[booleanPreferencesKey(KEY_HOME_PAGE_SHOW_HISTORY)] ?: true,
         )
     }
@@ -266,14 +261,14 @@ private object UISettingsTransformer: PreferenceTransformer<UISettings> {
         it[booleanPreferencesKey(KEY_APP_THEMED_ICON)] = ui.appIconThemed
         it[booleanPreferencesKey(KEY_BOTTOM_NAV_FLOATING)] = ui.bottomNavFloating
         it[intPreferencesKey(KEY_BOTTOM_NAV_LABEL)] = ui.bottomNavLabel.ordinal
-        it[booleanPreferencesKey(KEY_DARK_AMOLED)] = ui.darkAmoled
         it[intPreferencesKey(KEY_DARK_THEME_MODE)] = ui.darkPreference.ordinal
         it[booleanPreferencesKey(KEY_DARKEN_IMAGE_ON_NIGHT)] = ui.darkenImage
+        it[intPreferencesKey(KEY_DEFAULT_START)] = ui.defaultStartPage
         it[booleanPreferencesKey(KEY_HIDE_EXPLORE)] = ui.hideExplore
-        it[booleanPreferencesKey(KEY_REDUCE_EFFECT)] = ui.reduceEffect
         it[booleanPreferencesKey(KEY_REDUCE_MOTION)] = ui.reduceMotion
         it[booleanPreferencesKey(KEY_SETUP_FINISHED)] = ui.setupFinished
         it[booleanPreferencesKey(KEY_HOME_SINGLE_FORUM_LIST)] = ui.homeForumList
+        it[booleanPreferencesKey(KEY_RAIL_EXPANDED)] = ui.railExpanded
         it[booleanPreferencesKey(KEY_HOME_PAGE_SHOW_HISTORY)] = ui.showHistoryInHome
     }
 
@@ -282,8 +277,6 @@ private object UISettingsTransformer: PreferenceTransformer<UISettings> {
     private const val KEY_BOTTOM_NAV_FLOATING = "ui_bottom_nav_floating"
     private const val KEY_BOTTOM_NAV_LABEL = "ui_bottom_nav_label"
 
-    private const val KEY_DARK_AMOLED = "dark_amoled"
-
     /**
      * Dark mode preferences, Default mode is [DarkPreference.FOLLOW_SYSTEM]
      *
@@ -291,11 +284,14 @@ private object UISettingsTransformer: PreferenceTransformer<UISettings> {
      * */
     private const val KEY_DARK_THEME_MODE = "dark_mode"
     private const val KEY_DARKEN_IMAGE_ON_NIGHT = "ui_dark_img"
+
+    /** 启动首选页（[MainDestinationOrder] 的下标）；沿用 fork 的键名。 */
+    private const val KEY_DEFAULT_START = "defaultStart"
     private const val KEY_HIDE_EXPLORE = "ui_hide_explore"
     private const val KEY_SETUP_FINISHED = "ui_setup"
-    private const val KEY_REDUCE_EFFECT = "ui_reduce_effect"
     private const val KEY_REDUCE_MOTION = "ui_reduce_motion"
     private const val KEY_HOME_SINGLE_FORUM_LIST = "ui_forum_list_in_home"
+    private const val KEY_RAIL_EXPANDED = "ui_rail_expanded"
     private const val KEY_HOME_PAGE_SHOW_HISTORY = "ui_history_in_home"
 }
 
@@ -324,6 +320,7 @@ private object SignConfigTransformer: PreferenceTransformer<SignConfig> {
             autoSignSlow = it[booleanPreferencesKey(KEY_OKSIGN_SLOW)] ?: true,
             autoSignTime = hmTime ?: randomSignTime(),
             okSignOfficial = it[booleanPreferencesKey(KEY_OKSIGN_OFFICIAL)] ?: true,
+            failAutoStop = it[booleanPreferencesKey(KEY_OKSIGN_FAIL_AUTO_STOP)] ?: true,
         )
     }
 
@@ -332,11 +329,13 @@ private object SignConfigTransformer: PreferenceTransformer<SignConfig> {
         it.putBoolean(KEY_OKSIGN_SLOW, config.autoSignSlow)
         it.putLong(KEY_OKSIGN_AUTO_TIME, config.autoSignTime.value)
         it.putBoolean(KEY_OKSIGN_OFFICIAL, config.okSignOfficial)
+        it.putBoolean(KEY_OKSIGN_FAIL_AUTO_STOP, config.failAutoStop)
     }
 
     private const val KEY_OKSIGN_AUTO = "auto_sign"
     private const val KEY_OKSIGN_AUTO_TIME = "auto_sign_time"
     private const val KEY_OKSIGN_OFFICIAL = "sign_using_official"
+    private const val KEY_OKSIGN_FAIL_AUTO_STOP = "oksign_fail_auto_stop"
     private const val KEY_OKSIGN_SLOW = "sign_slow_mode"
 }
 

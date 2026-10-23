@@ -28,8 +28,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -80,6 +78,8 @@ import com.huanchengfly.tieba.post.theme.Grey800
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.theme.colorscheme.translucentColorScheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.PaletteBackground
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
 import com.huanchengfly.tieba.post.ui.page.settings.AboutPage
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.dialogs.ColorPickerDialog
@@ -88,6 +88,9 @@ import com.huanchengfly.tieba.post.utils.ColorUtils
 import com.huanchengfly.tieba.post.utils.DisplayUtil
 import com.huanchengfly.tieba.post.utils.DisplayUtil.toDpSize
 import kotlin.math.abs
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Check
+import top.yukonga.miuix.kmp.icon.extended.Refresh
 
 private val ColorThumbSize = DpSize(4.dp, 38.dp)
 
@@ -150,7 +153,7 @@ private fun TranslucentThemeContent(
         TextButton(
             onClick = onSelectWallpaper,
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium,
+            shape = SquircleShape(SquircleCornerRadius.Medium),
             colors = buttonColor
         ) {
             Text(stringResource(R.string.title_select_pic), fontWeight = FontWeight.Bold)
@@ -202,7 +205,7 @@ private fun TranslucentThemeContent(
         Spacer(modifier = Modifier.height(16.dp))
         Surface(
             color = MaterialTheme.colorScheme.secondaryContainer,
-            shape = MaterialTheme.shapes.small
+            shape = SquircleShape(SquircleCornerRadius.Small)
         ) {
             Row(
                 modifier = maxWidth.padding(12.dp),
@@ -256,7 +259,7 @@ fun SideBySideWallpaper(
                     }
                 )
             } else {
-                PaletteBackground(modifier, shape = MaterialTheme.shapes.medium, blurRadius = 100.dp)
+                PaletteBackground(modifier, shape = SquircleShape(SquircleCornerRadius.Medium), blurRadius = 100.dp)
             }
         }
     }
@@ -269,7 +272,7 @@ fun SideBySideWallpaper(
         val wallpaperModifier = Modifier
             .weight(1f, false)
             .aspectRatio(ratio = screen.width / screen.height)
-            .shadow(6.dp, shape = MaterialTheme.shapes.medium)
+            .shadow(6.dp, shape = SquircleShape(SquircleCornerRadius.Medium))
 
         movableWallpaperContent(wallpaperModifier, painter, alpha)
 
@@ -339,7 +342,7 @@ private fun SelectableTextButton(
             scaleY = scaleAnim
         },
         enabled = !selected,
-        shape = MaterialTheme.shapes.medium,
+        shape = SquircleShape(SquircleCornerRadius.Medium),
         colors = colors
     ) {
         Icon(
@@ -362,7 +365,7 @@ private fun ColorSliderResetButton(modifier: Modifier = Modifier, tint: Color, o
         modifier = modifier.size(ColorThumbSize.height).clip(CircleShape).clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(imageVector = Icons.Default.Refresh, contentDescription = null, tint = tint)
+        Icon(imageVector = MiuixIcons.Refresh, contentDescription = null, tint = tint)
     }
 }
 
@@ -446,8 +449,8 @@ private fun ColorPanel(
     modifier: Modifier = Modifier
 ) {
     val shapes = IconButtonDefaults.toggleableShapes(
-        shape = MaterialTheme.shapes.small,
-        pressedShape = MaterialTheme.shapes.medium,
+        shape = SquircleShape(SquircleCornerRadius.Small),
+        pressedShape = SquircleShape(SquircleCornerRadius.Medium),
         checkedShape = CircleShape
     )
     val colorsList = remember(list) {
@@ -484,7 +487,7 @@ private fun ColorPanel(
                     colors = colorsList.getOrNull(i) ?: IconButtonDefaults.iconToggleButtonVibrantColors(),
                 ) {
                     if (item == selected) {
-                        Icon(Icons.Rounded.Check, contentDescription = null, Modifier.size(Sizes.Tiny))
+                        Icon(MiuixIcons.Basic.Check, contentDescription = null, Modifier.size(Sizes.Tiny))
                     }
                 }
             }

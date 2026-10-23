@@ -2,6 +2,7 @@ package com.huanchengfly.tieba.post.ui.page.subposts
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -16,19 +17,14 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.VerticalAlignTop
 import androidx.compose.material3.Button
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
+import com.huanchengfly.tieba.post.ui.widgets.compose.PbContentRenderList
+import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -48,23 +44,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastForEach
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.huanchengfly.tieba.post.LocalHabitSettings
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.CommonUiEvent
 import com.huanchengfly.tieba.post.arch.collectUiEventWithLifecycle
-import com.huanchengfly.tieba.post.arch.isFullyCollapsed
-import com.huanchengfly.tieba.post.arch.isOverlapping
 import com.huanchengfly.tieba.post.navigateDebounced
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.common.FadedVisibility
 import com.huanchengfly.tieba.post.ui.common.LocalAnimatedVisibilityScope
+import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
 import com.huanchengfly.tieba.post.ui.models.Like
 import com.huanchengfly.tieba.post.ui.models.PostData
+import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.ui.models.SubPostItemData
 import com.huanchengfly.tieba.post.ui.models.UserData
 import com.huanchengfly.tieba.post.ui.page.Destination.CopyText
@@ -80,16 +78,17 @@ import com.huanchengfly.tieba.post.ui.utils.rememberScrollOrientationConnection
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
-import com.huanchengfly.tieba.post.ui.widgets.compose.BlurScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.CenterAlignedTopAppBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogNegativeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.FavoriteButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
+import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.PlainTooltipBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.SharedTransitionUserHeader
 import com.huanchengfly.tieba.post.ui.widgets.compose.StickyHeaderOverlay
+import com.huanchengfly.tieba.post.ui.widgets.compose.ListItemCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.defaultBottomIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.dialogs.AnyPopDialogProperties
@@ -106,6 +105,14 @@ import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
 import com.huanchengfly.tieba.post.utils.TiebaUtil
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixPinnedScrollBehavior
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixEnterAlwaysScrollBehavior
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.icon.extended.Close
+import top.yukonga.miuix.kmp.icon.extended.Edit
+
 
 @NonRestartableComposable
 @Composable
@@ -194,18 +201,6 @@ private fun SubPostsContent(
         onConfirm = viewModel::onDeleteConfirmed
     )
 
-//    onGlobalEvent<GlobalEvent.ReplySuccess>(
-//        filter = { it.threadId == threadId && it.postId == postId }
-//    ) { event ->
-//        viewModel.send(
-//            SubPostsUiIntent.Load(
-//                forumId,
-//                threadId,
-//                postId,
-//                subPostId.takeIf { loadFromSubPost } ?: 0L
-//            )
-//        )
-//    }
 
     StateScreen(
         modifier = Modifier.background(MaterialTheme.colorScheme.surface),
@@ -216,9 +211,9 @@ private fun SubPostsContent(
     ) {
         val coroutineScope = rememberCoroutineScope()
         val topAppBarScrollBehavior = if (useStickyHeader) {
-            TopAppBarDefaults.pinnedScrollBehavior()
+            rememberMiuixPinnedScrollBehavior()
         } else {
-            TopAppBarDefaults.enterAlwaysScrollBehavior()
+            rememberMiuixEnterAlwaysScrollBehavior()
         }
         val scrollOrientationConnection = rememberScrollOrientationConnection()
 
@@ -264,18 +259,17 @@ private fun SubPostsContent(
         // non-nullable, initialize here for convenience
         val onCopyClickedListener: (String) -> Unit = { navigator.navigate(CopyText(it)) }
 
-        BlurScaffold(
-            topHazeBlock = {
-                blurEnabled = !topAppBarScrollBehavior.isFullyCollapsed &&
-                        (lazyListState.canScrollBackward || topAppBarScrollBehavior.isOverlapping)
-            },
+        val barBackdrop = rememberMiuixBarBackdrop()
+
+        MyScaffold(
             topBar = {
                 TitleBar(
                     post = uiState.post,
                     onBack = onNavigateUp,
                     onOpenThread = onOpenThreadClickedListener.takeIf { !isSheet },
                     onScrollToTop = onScrollToTopClicked.takeIf { lazyListState.canScrollBackward && canReply },
-                    scrollBehavior = topAppBarScrollBehavior
+                    scrollBehavior = topAppBarScrollBehavior,
+                    backdrop = barBackdrop
                 ) {
                     if (useStickyHeaderWorkaround) {
                         StickyHeaderOverlay(state = lazyListState) {
@@ -287,9 +281,8 @@ private fun SubPostsContent(
             bottomBar = {
                 Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
             },
-            bottomHazeBlock = { blurEnabled = false },
             floatingActionButton = {
-                if (forumName.isNullOrEmpty()) return@BlurScaffold
+                if (forumName.isNullOrEmpty()) return@MyScaffold
                 val fabVisible by remember {
                     derivedStateOf {
                         if (canReply) {
@@ -316,10 +309,12 @@ private fun SubPostsContent(
             SwipeUpLazyLoadColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .miuixLayerBackdrop(barBackdrop)
                     .nestedScroll(scrollOrientationConnection)
                     .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
                 state = lazyListState,
-                contentPadding = contentPadding,
+                contentPadding = contentPadding + PaddingValues(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 isLoading = isLoadingMore,
                 onLazyLoad = viewModel::onLoadMore.takeIf { hasMore },
                 bottomIndicator = defaultBottomIndicator,
@@ -327,18 +322,15 @@ private fun SubPostsContent(
                 val postItem = uiState.post ?: return@SwipeUpLazyLoadColumn
                 item(key = "Post$postId", contentType = PostContentType) {
                     CompositionLocalProvider(LocalAnimatedVisibilityScope provides null) {
-                        Column {
-                            PostCard(
-                                post = postItem,
-                                onUserClick = {
-                                    navigator.navigateDebounced(UserProfile(postItem.author))
-                                },
-                                onReplyClick = onReplyPostClickedListener,
-                                onMenuCopyClick = onCopyClickedListener,
-                                onMenuDeleteClick = viewModel::onDeletePost.takeIf { postItem.author.id == myUid } // Check is my Post
-                            )
-                            HorizontalDivider(thickness = 2.dp)
-                        }
+                        PostCard(
+                            post = postItem,
+                            onUserClick = {
+                                navigator.navigateDebounced(UserProfile(postItem.author))
+                            },
+                            onReplyClick = onReplyPostClickedListener,
+                            onMenuCopyClick = onCopyClickedListener,
+                            onMenuDeleteClick = viewModel::onDeletePost.takeIf { postItem.author.id == myUid } // Check is my Post
+                        )
                     }
                 }
 
@@ -358,23 +350,25 @@ private fun SubPostsContent(
                 }
 
                 items(items = uiState.subPosts, key = { subPost -> subPost.id }) { item ->
-                    SubPostItem(
-                        item = item,
-                        onUserClick = {
-                            navigator.navigateDebounced(
-                                route = UserProfile(user = it, transitionKey = item.id.toString())
-                            )
-                        },
-                        onAgree = viewModel::onSubPostLikeClicked,
-                        onMenuReplyClick = onReplySubPostClickedListener,
-                        onMenuCopyClick = onCopyClickedListener,
-                        onMenuReportClick = {
-                            coroutineScope.launch {
-                                TiebaUtil.reportPost(context, navigator, postId = it.id.toString())
-                            }
-                        },
-                        onMenuDeleteClick = viewModel::onDeleteSubPost.takeIf { item.authorId == myUid } // Check is my SubPost
-                    )
+                    ListItemCard {
+                        SubPostItem(
+                            item = item,
+                            onUserClick = {
+                                navigator.navigateDebounced(
+                                    route = UserProfile(user = it, transitionKey = item.id.toString())
+                                )
+                            },
+                            onAgree = viewModel::onSubPostLikeClicked,
+                            onMenuReplyClick = onReplySubPostClickedListener,
+                            onMenuCopyClick = onCopyClickedListener,
+                            onMenuReportClick = {
+                                coroutineScope.launch {
+                                    TiebaUtil.reportPost(context, navigator, postId = it.id.toString())
+                                }
+                            },
+                            onMenuDeleteClick = viewModel::onDeleteSubPost.takeIf { item.authorId == myUid } // Check is my SubPost
+                        )
+                    }
                 }
             }
         }
@@ -388,7 +382,8 @@ private fun TitleBar(
     onOpenThread: (() -> Unit)? = null,
     onScrollToTop: (() -> Unit)? = null,
     isSheet: Boolean = onOpenThread != null,
-    scrollBehavior: TopAppBarScrollBehavior?,
+    scrollBehavior: ScrollBehavior?,
+    backdrop: LayerBackdrop? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) {
     CenterAlignedTopAppBar(
@@ -403,7 +398,7 @@ private fun TitleBar(
         },
         navigationIcon = {
             ActionItem(
-                icon = if (isSheet) Icons.Rounded.Close else Icons.AutoMirrored.Rounded.ArrowBack,
+                icon = if (isSheet) MiuixIcons.Close else MiuixIcons.Back,
                 contentDescription = R.string.btn_close,
                 onClick = onBack
             )
@@ -425,6 +420,7 @@ private fun TitleBar(
                 )
             }
         },
+        backdrop = backdrop,
         scrollBehavior = scrollBehavior,
         content = content
     )
@@ -439,7 +435,7 @@ private fun SubpostsFAB(
 ) {
     val canReply = onReply != null
     val tip = stringResource(if (canReply) R.string.tip_reply_thread else R.string.btn_back_to_top)
-    val icon = if (canReply) Icons.Rounded.Edit else Icons.Rounded.VerticalAlignTop
+    val icon = if (canReply) MiuixIcons.Edit else Icons.Rounded.VerticalAlignTop
 
     PlainTooltipBox(
         modifier = modifier,
@@ -518,7 +514,7 @@ private fun SubPostItem(
                     .fillMaxWidth()
                     .padding(start = 44.dp, top = 8.dp)
             ) {
-                item.content!!.fastForEach { it.Render() }
+                PbContentRenderList(item.content!!)
             }
         }
     }
@@ -600,7 +596,7 @@ private fun SubPostBlockedTip(modifier: Modifier = Modifier) {
     BlockTip(modifier = modifier) {
         Text(
             text = stringResource(id = R.string.tip_blocked_sub_post),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MiuixTheme.colorScheme.onBackgroundVariant,
         )
     }
 }

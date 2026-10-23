@@ -129,13 +129,15 @@ class OKSignRepositoryImp @Inject constructor(
         forums: List<ForumSignParam>,
         tbs: String,
         slowMode: Boolean,
+        failAutoStop: Boolean,
         initialProgress: Int,
         listener: ProgressListener?
     ): LongSet {
         val succeed = mutableLongSetOf()
         var progress = initialProgress
 
-        forums.forEach { (forumName, forumId) ->
+        for ((forumName, forumId) in forums) {
+            var failed = false
             try {
                 val result = networkDataSource.requestSign(forumId, forumName, tbs)
                 if (result.isSignIn == 1) {
@@ -146,8 +148,14 @@ class OKSignRepositoryImp @Inject constructor(
                 val message = e.getErrorMessage()
                 Log.w(TAG, "onNormalSign: Sign $forumName failed: $message")
                 listener?.onFailed(progress, forumName, message)
+                failed = true
             } finally {
                 progress++
+            }
+            // 失败中止：一个吧失败通常意味着会话/tbs 已失效，继续只会让每个吧都失败一次。
+            if (failed && failAutoStop) {
+                Log.w(TAG, "onNormalSign: aborting after $forumName failed (failAutoStop).")
+                break
             }
             if (progress < forums.size) {
                 delay(getSignDelay(slowMode))
@@ -222,6 +230,7 @@ class OKSignRepositoryImp @Inject constructor(
                 tbs = account.tbs,
                 initialProgress = succeed.size,
                 slowMode = signConfig.autoSignSlow,
+                failAutoStop = signConfig.failAutoStop,
                 listener = listener
             )
             if (succeedForumIds.isNotEmpty()) {

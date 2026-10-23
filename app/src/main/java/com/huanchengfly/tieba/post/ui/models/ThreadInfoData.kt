@@ -2,7 +2,6 @@ package com.huanchengfly.tieba.post.ui.models
 
 import androidx.compose.runtime.Immutable
 import com.huanchengfly.tieba.post.api.models.protos.OriginThreadInfo
-import com.huanchengfly.tieba.post.api.models.protos.PollInfo
 import com.huanchengfly.tieba.post.arch.ImmutableHolder
 
 /**

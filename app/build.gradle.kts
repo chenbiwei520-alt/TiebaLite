@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.ByteArrayOutputStream
 import java.time.Clock
 import java.time.Instant
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -134,6 +135,86 @@ android {
     namespace = "com.huanchengfly.tieba.post"
 }
 
+// The **release** build ships under its own application id.
+//
+// AGP 9 dropped `applicationId` from the build-type DSL (it only exists on the variant now), so the id
+// is set through the variant API. This changes the *installed* package only — `namespace` above stays
+// com.huanchengfly.tieba.post, so the R class, the manifest's relative component names
+// (".MainActivityV2"), the `${applicationId}` authorities and the launcher-alias ComponentNames
+// (built from `context.packageName`) are all unaffected.
+//
+// Only `release` is touched on purpose: debug keeps com.huanchengfly.tieba.post (the two can be
+// installed side by side), and the benchmark / composeTracing / ci variants keep the ids their
+// `applicationIdSuffix` produces from the default config.
+// ── Release versioning ────────────────────────────────────────────────────────────────────────────
+//
+// `version.properties` (project root) is the single source of truth for what a **release** APK
+// reports: the name ships as-is, the code ships as-is and is then bumped once the APK has actually
+// been packaged, so every packaged release gets its own increasing code. Debug and the
+// benchmark/ci variants keep the `defaultConfig` values.
+//
+// The file is read through `providers.fileContents`, which makes it a tracked build input: after the
+// bump below, the next build sees the new code instead of a cached one.
+// Both readers inline their parsing, and the bump action below captures only plain locals: a lambda
+// referencing a script-level function or val carries a reference to the build script itself, which the
+// configuration cache cannot serialize — every AGP task that reads the variant's version then fails
+// with "cannot serialize Gradle script object references".
+val releaseVersionFile = rootProject.layout.projectDirectory.file("version.properties")
+
+val releaseVersionName = providers.fileContents(releaseVersionFile).asText.map { text ->
+    Properties().apply { load(text.reader()) }
+        .getProperty("versionName")
+        ?.trim()
+        .orEmpty()
+        .ifEmpty { "1.0" }
+}
+
+val releaseVersionCode = providers.fileContents(releaseVersionFile).asText.map { text ->
+    Properties().apply { load(text.reader()) }
+        .getProperty("versionCode")
+        ?.trim()
+        ?.toIntOrNull()
+        ?: 1
+}
+
+androidComponents {
+    onVariants { variant ->
+        if (variant.buildType == "release") {
+            variant.applicationId.set("com.Jeaceny.tieba.post")
+            variant.outputs.forEach { output ->
+                output.versionName.set(releaseVersionName)
+                output.versionCode.set(releaseVersionCode)
+            }
+        }
+    }
+}
+
+// Advance the stored code once a release APK has really been written. `doLast` runs only when the
+// task executes, so an up-to-date rebuild never skips a code, and packaging the benchmark/ci variants
+// (`packageBenchmarkRelease` / `packageCi`) never touches this file.
+tasks.matching { it.name == "packageRelease" }.configureEach {
+    // Captured by value — a real File plus literals — so the action serializes under the configuration
+    // cache; touching `project` or script members inside `doLast` would not.
+    val versionFile = rootProject.layout.projectDirectory.file("version.properties").asFile
+    doLast {
+        val properties = Properties()
+        versionFile.inputStream().use { properties.load(it) }
+        val name = properties.getProperty("versionName")?.trim().orEmpty().ifEmpty { "1.0" }
+        val nextCode = (properties.getProperty("versionCode")?.trim()?.toIntOrNull() ?: 0) + 1
+        versionFile.writeText(
+            buildString {
+                appendLine("# Release versioning — the single source of truth for what a release APK reports.")
+                appendLine("#")
+                appendLine("# versionName: shipped as-is by release builds.")
+                appendLine("# versionCode: shipped as-is, then bumped by :app:packageRelease once an APK has actually")
+                appendLine("#              been packaged, so every release APK gets its own increasing code.")
+                appendLine("versionName=$name")
+                appendLine("versionCode=$nextCode")
+            }
+        )
+    }
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_17
@@ -145,7 +226,6 @@ kotlin {
             "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
             "-opt-in=androidx.compose.material3.ExperimentalMaterial3ComponentOverrideApi",
             "-opt-in=androidx.compose.material3.ExperimentalMaterial3ExpressiveApi",
-            "-opt-in=dev.chrisbanes.haze.ExperimentalHazeApi",
         )
     }
 }
@@ -196,6 +276,7 @@ dependencies {
 
     // Compose Accompanist
     implementation(libs.accompanist.drawablepainter)
+    implementation(project(":material-color-utilities"))
     implementation(project(":placeholder"))
 
     implementation(libs.androidx.compose.animation)
@@ -212,11 +293,22 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
+    // Miuix (HyperOS design language); calls are funneled through ui/miuix adapter layer
+    implementation(libs.miuix.ui)
+    implementation(libs.miuix.preference)
+    implementation(libs.miuix.icons)
+    // Progressive blur top bars; library minSdk is 33, usage is gated by
+    // isRuntimeShaderSupported() so API 24-32 devices fall back to an opaque bar
+    implementation(libs.miuix.blur)
+    // Continuous corners for every rounded surface in the app (cards, chips, thumbs, bars).
+    implementation(libs.miuix.squircle)
+    // Kyant0 AndroidLiquidGlass backdrop: liquid-glass bottom bar with rememberCombinedBackdrop
+    // multi-layer capture (page + accent icon copy). AGSL-based; gated by
+    // isRuntimeShaderSupported() so API 24-32 devices fall back to the flat bar.
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.service)
     implementation(libs.androidx.lifecycle.viewModel.compose)
     implementation(libs.androidx.lifecycle.viewmodel.savedstate)
-    implementation(project(":material-color-utilities"))
 
     //AndroidX
     implementation(libs.androidx.annotation)
@@ -251,15 +343,12 @@ dependencies {
 
     implementation(libs.google.gson)
 
-    implementation(libs.haze.blur)
 
     // Coil
     implementation(libs.bundles.coil3)
 
-    // Image Viewer
-    implementation(libs.androidx.recyclerview)
-    implementation(libs.iielse.imageviewer)
-    implementation(libs.subsampling.image)
+    // Image Viewer (Compose: pager + zoomable/telephoto, replaces imageviewer + subsampling-scale)
+    implementation(libs.telephoto.zoomable.image.coil3)
 
     implementation(libs.squareup.okhttp3)
     implementation(libs.squareup.retrofit2)
@@ -267,7 +356,6 @@ dependencies {
 
     implementation(libs.liyujiang.oadi)
 
-    implementation(libs.godaddy.colorpicker)
     implementation(libs.yalantis.ucrop)
 
     // Test

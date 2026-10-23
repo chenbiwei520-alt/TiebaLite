@@ -1,13 +1,11 @@
 package com.huanchengfly.tieba.post.ui.page.settings
 
-import androidx.annotation.StringRes
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -22,11 +20,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.movableContentWithReceiverOf
@@ -44,6 +39,8 @@ import com.huanchengfly.tieba.post.LocalHabitSettings
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.repository.user.Settings
 import com.huanchengfly.tieba.post.theme.isTranslucent
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
 import com.huanchengfly.tieba.post.ui.models.LikeZero
 import com.huanchengfly.tieba.post.ui.models.settings.HabitSettings
 import com.huanchengfly.tieba.post.ui.page.settings.theme.UserPostCardWidget
@@ -51,19 +48,27 @@ import com.huanchengfly.tieba.post.ui.page.subposts.PostLikeButton
 import com.huanchengfly.tieba.post.ui.page.thread.ThreadHeader
 import com.huanchengfly.tieba.post.ui.page.thread.Type
 import com.huanchengfly.tieba.post.ui.widgets.compose.AvatarPlaceholder
-import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.CenterAlignedTopAppBar
-import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
+import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixBackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.fade
 import com.huanchengfly.tieba.post.ui.widgets.compose.placeholder
-import com.huanchengfly.tieba.post.ui.widgets.compose.preference.SegmentedPreference
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
+import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.TopAppBar as MiuixTopAppBar
+import top.yukonga.miuix.kmp.preference.RadioButtonPreference
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
-fun StickyHeaderSettingsPage(habitSettings: Settings<HabitSettings>, onBack: () -> Unit = {}) {
+fun StickyHeaderSettingsPage(
+    habitSettings: Settings<HabitSettings>,
+    onBack: () -> Unit = {},
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
+) {
     val listState = rememberLazyListState()
     val windowSize = LocalWindowInfo.current.containerDpSize
     val isWindowHeightCompact = windowSize.height <= WindowSizeClass.HEIGHT_DP_MEDIUM_LOWER_BOUND.dp
@@ -76,14 +81,16 @@ fun StickyHeaderSettingsPage(habitSettings: Settings<HabitSettings>, onBack: () 
         }
     }
 
-    MyScaffold(
+    MiuixScaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                titleRes = R.string.title_settings_sticky_header,
-                navigationIcon = { BackNavigationIcon(onBackPressed = onBack) }
-            )
+            if (!paneMode) {
+                // Miuix large title bar, matching the other HyperOS settings sub-pages
+                MiuixTopAppBar(
+                    title = stringResource(R.string.title_settings_sticky_header),
+                    navigationIcon = { MiuixBackNavigationIcon(onBackPressed = onBack) },
+                )
+            }
         },
-        backgroundColor = MaterialTheme.colorScheme.background,
     ) { contentPadding ->
         Box(
             modifier = Modifier.fillMaxSize().padding(contentPadding),
@@ -119,28 +126,26 @@ fun StickyHeaderSettingsPage(habitSettings: Settings<HabitSettings>, onBack: () 
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .background(color = MaterialTheme.colorScheme.background)
+                    .background(color = MiuixTheme.colorScheme.surface)
                     .padding(top = 64.dp, bottom = 8.dp),
             ) {
-                Text(
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                    text = stringResource(R.string.tip_sticky_header),
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                SmallTitle(text = stringResource(R.string.tip_sticky_header))
 
-                RadioPreference(
-                    title = R.string.settings_sticky_header_on,
-                    summary = R.string.summary_sticky_header_on,
-                    selected = selected,
-                    onClick = { onSelectChanged(true) }
-                )
+                Card(modifier = Modifier.padding(horizontal = 12.dp)) {
+                    RadioButtonPreference(
+                        title = stringResource(R.string.settings_sticky_header_on),
+                        summary = stringResource(R.string.summary_sticky_header_on),
+                        selected = selected,
+                        onClick = { onSelectChanged(true) },
+                    )
 
-                RadioPreference(
-                    title = R.string.settings_sticky_header_off,
-                    summary = R.string.summary_sticky_header_off,
-                    selected = !selected,
-                    onClick = { onSelectChanged(false) }
-                )
+                    RadioButtonPreference(
+                        title = stringResource(R.string.settings_sticky_header_off),
+                        summary = stringResource(R.string.summary_sticky_header_off),
+                        selected = !selected,
+                        onClick = { onSelectChanged(false) },
+                    )
+                }
             }
         }
 
@@ -160,36 +165,6 @@ fun StickyHeaderSettingsPage(habitSettings: Settings<HabitSettings>, onBack: () 
             }
         }
     }
-}
-
-@Composable
-private fun RadioPreference(
-    selected: Boolean,
-    @StringRes title: Int,
-    modifier: Modifier = Modifier,
-    @StringRes summary: Int? = null,
-    onClick: () -> Unit
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    SegmentedPreference(
-        modifier = modifier,
-        title = {
-            Text(text = stringResource(id = title))
-        },
-        summary = summary?.let {
-            { Text(text = stringResource(id = it)) }
-        },
-        leadingIcon = {
-            RadioButton(
-                selected = selected,
-                onClick = null,
-                interactionSource = interactionSource,
-            )
-        },
-        colors = ListItemDefaults.colors(),
-        interactionSource = interactionSource,
-        onClick = onClick,
-    )
 }
 
 @Composable
@@ -215,7 +190,7 @@ private fun ThreadColumnWithStickyHeader(
 
     Surface(
         modifier = modifier,
-        shape = MaterialTheme.shapes.small,
+        shape = SquircleShape(SquircleCornerRadius.Small),
         color = MaterialTheme.colorScheme.background,
         contentColor = MaterialTheme.colorScheme.onBackground,
         shadowElevation = 1.dp,
@@ -243,7 +218,7 @@ private fun ThreadPlaceHolder(
     modifier: Modifier = Modifier,
     highlight: PlaceholderHighlight? = null,
 ) {
-    val userCardShape = MaterialTheme.shapes.extraSmall
+    val userCardShape = SquircleShape(SquircleCornerRadius.ExtraSmall)
     Column(
         modifier = modifier.padding(16.dp)
     ) {

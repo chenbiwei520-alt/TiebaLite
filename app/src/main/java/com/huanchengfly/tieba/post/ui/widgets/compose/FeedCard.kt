@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,26 +43,29 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onVisibilityChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.util.fastForEach
 import androidx.media3.exoplayer.ExoPlayer
 import com.google.accompanist.placeholder.PlaceholderHighlight
 import com.huanchengfly.tieba.post.App
@@ -89,8 +91,13 @@ import com.huanchengfly.tieba.post.ui.common.theme.compose.onNotNull
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.isWindowWidthCompact
 import com.huanchengfly.tieba.post.ui.models.Author
 import com.huanchengfly.tieba.post.ui.models.SimpleForum
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
 import com.huanchengfly.tieba.post.ui.models.ThreadItem
 import com.huanchengfly.tieba.post.ui.page.photoview.PhotoViewActivity
+import com.huanchengfly.tieba.post.ui.page.videoview.VideoViewer
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.LocalMorphState
+import com.huanchengfly.tieba.post.ui.widgets.compose.morph.MorphAnchor
 import com.huanchengfly.tieba.post.ui.utils.getPhotoViewData
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.LocalVideoPreviewState
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.PreviewVideoPlayer
@@ -100,6 +107,10 @@ import com.huanchengfly.tieba.post.utils.EmoticonUtil.emoticonString
 import com.huanchengfly.tieba.post.utils.MediaUtil
 import com.huanchengfly.tieba.post.utils.ThemeUtil
 import com.huanchengfly.tieba.post.utils.TiebaUtil
+// Aliased: this file declares its own legacy `Card` (see below), which stays for the feed rows.
+import top.yukonga.miuix.kmp.basic.Card as MiuixCard
+import top.yukonga.miuix.kmp.squircle.squircleBackground
+import top.yukonga.miuix.kmp.squircle.squircleClip
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlin.math.max
@@ -185,7 +196,7 @@ fun MediaSizeBadge(
 ) {
     Row(
         modifier = modifier
-            .background(color = backgroundColor, shape = MaterialTheme.shapes.extraSmall)
+            .squircleBackground(backgroundColor, SquircleCornerRadius.ExtraSmall)
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -288,7 +299,7 @@ fun ForumInfoChip(
     Row(
         modifier = modifier
             .height(IntrinsicSize.Min)
-            .clip(MaterialTheme.shapes.extraSmall)
+            .squircleClip(SquircleCornerRadius.ExtraSmall)
             .background(color = MaterialTheme.colorScheme.secondaryContainer)
             .clickable(onClick = onClick)
             .padding(4.dp),
@@ -299,7 +310,7 @@ fun ForumInfoChip(
             Avatar(
                 data = avatarUrl,
                 modifier = Modifier.fillMaxHeight().aspectRatio(1f),
-                shape = MaterialTheme.shapes.extraSmall
+                shape = SquircleShape(SquircleCornerRadius.ExtraSmall)
             )
         }
         Text(
@@ -324,7 +335,7 @@ private fun MediaPlaceholder(
     ) {
         Row(
             modifier = modifier
-                .clip(MaterialTheme.shapes.small)
+                .squircleClip(SquircleCornerRadius.Small)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 .onNotNull(onClick) {
                     clickable(onClick = it)
@@ -359,6 +370,8 @@ fun ThreadMedia(
     val habitSettings = LocalHabitSettings.current
     val mediaCount = medias.size
     val isSinglePhoto = mediaCount == 1
+    val morphState = LocalMorphState.current
+    val density = LocalDensity.current
 
     Box(modifier = modifier) {
         if (videoInfo != null) {
@@ -380,12 +393,26 @@ fun ThreadMedia(
                     modifier = Modifier
                         .fillMaxWidth(singleMediaFraction)
                         .aspectRatio(ratio = max(videoInfo.item.aspectRatio(), 16f / 9))
-                        .clip(MaterialTheme.shapes.small),
+                        .squircleClip(SquircleCornerRadius.Small),
                     url = videoInfo.item.videoUrl,
                     thumbnailUrl = videoInfo.item.thumbnailUrl,
                     mediaId = videoInfo.item.videoMD5,
-                    onClick = { positionMs ->
-                        VideoViewActivity.launch(context, videoInfo.item, positionMs)
+                    onClick = { positionMs, bounds ->
+                        // 先尝试主窗口内的容器形变（与 Matter 的视频共享元素同一套曲线），
+                        // 没有宿主时退回独立 Activity。
+                        val opened = VideoViewer.open(
+                            context = context,
+                            videoInfo = videoInfo.item,
+                            positionMs = positionMs,
+                            anchor = MorphAnchor(
+                                url = videoInfo.item.videoUrl,
+                                bounds = bounds,
+                                cornerRadiusPx = with(density) { 8.dp.toPx() },
+                                ratio = videoInfo.item.aspectRatio(),
+                                thumbUrl = videoInfo.item.thumbnailUrl,
+                            ),
+                        )
+                        if (!opened) VideoViewActivity.launch(context, videoInfo.item, positionMs)
                     }
                 )
             }
@@ -404,7 +431,7 @@ fun ThreadMedia(
                     modifier = Modifier.fillMaxWidth(),
                     onClick = {
                         val data = getPhotoViewData(medias, forumId, forumName, threadId, index = 0)
-                        PhotoViewActivity.launch(context, data)
+                        PhotoViewActivity.launch(context, data, morphState = morphState)
                     }
                 )
             } else if (medias.first().isExpired) {
@@ -421,7 +448,7 @@ fun ThreadMedia(
                     Row(
                         modifier = Modifier
                             .matchParentSize()
-                            .clip(MaterialTheme.shapes.small),
+                            .squircleClip(SquircleCornerRadius.Small),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         for (index in 0 until min(medias.size, MAX_PHOTO_IN_ROW)) {
@@ -469,9 +496,9 @@ fun ThreadMedia(
 private fun LongPicChip(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .background(
+            .squircleBackground(
                 color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = MaterialTheme.shapes.extraSmall
+                cornerRadius = SquircleCornerRadius.ExtraSmall
             )
             .padding(4.dp)
     ) {
@@ -494,26 +521,31 @@ fun OriginThreadCard(
         originThreadInfo.get { content.buildRenders(imageLoadType) }
     }
 
-    Column(
-        modifier = modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .onNotNull(onClick) { clickable(onClick = it) }
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+    // Miuix `Card`, same as every other card in the app: it owns the surface (surfaceContainer)
+    // and the 16dp squircle clip, replacing the hand-rolled Material3
+    // `clip + background + clickable` chain, whose `surfaceContainerHigh` / `shapes.small`
+    // (8dp) did not match the surrounding Miuix cards.
+    // `insideMargin` defaults to 0dp on Miuix's `Card`, so the previous 16dp content inset is
+    // passed explicitly to keep the rendered layout identical.
+    MiuixCard(
+        modifier = modifier.fillMaxWidth(),
+        cornerRadius = Sizes.CornerRadius,
+        insideMargin = PaddingValues(16.dp),
+        showIndication = onClick != null,
+        onClick = onClick,
     ) {
-        Column {
-            contentRenders.fastForEach {
-                it.Render()
-            }
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            PbContentRenderList(contentRenders)
+            ThreadMedia(
+                forumId = originThreadInfo.get { fid },
+                forumName = originThreadInfo.get { fname },
+                threadId = originThreadInfo.get { tid.toLong() },
+                medias = originThreadInfo.item.media,
+                videoInfo = originThreadInfo.get { video_info }?.wrapImmutable()
+            )
         }
-        ThreadMedia(
-            forumId = originThreadInfo.get { fid },
-            forumName = originThreadInfo.get { fname },
-            threadId = originThreadInfo.get { tid.toLong() },
-            medias = originThreadInfo.item.media,
-            videoInfo = originThreadInfo.get { video_info }?.wrapImmutable()
-        )
     }
 }
 
@@ -538,7 +570,14 @@ fun FeedCard(
             SharedTransitionUserHeader(
                 user = thread.author,
                 extraKey = thread.id,
-                desc = remember { DateTimeUtils.getRelativeTimeString(context, thread.lastTimeMill) },
+                desc = remember(thread.lastTimeMill) {
+                    // A non-positive timestamp means the source never provided a usable time
+                    // (e.g. an unparsable collection date). Rendering it would yield 1970-01-01,
+                    // so fall back to no description at all.
+                    thread.lastTimeMill.takeIf { it > 0 }?.let {
+                        DateTimeUtils.getRelativeTimeString(context, it)
+                    }
+                },
                 onClick = { onClickUser(thread) },
                 content = dislikeAction
             )
@@ -552,7 +591,21 @@ fun FeedCard(
                     lineSpacing = 0.8.sp,
                     overflow = TextOverflow.Ellipsis,
                     maxLines = 5,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge.let {
+                        if (thread.isDeleted) {
+                            it.copy(textDecoration = TextDecoration.LineThrough)
+                        } else {
+                            it
+                        }
+                    }
+                )
+            }
+
+            if (thread.isDeleted) {
+                Text(
+                    text = stringResource(id = R.string.tip_thread_store_deleted),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.outlineVariant,
                 )
             }
 
@@ -565,13 +618,12 @@ fun FeedCard(
             )
 
             thread.originThreadInfo?.let {
+                // The clip / background / clickable / padding chain used to live here; the card
+                // now owns all four, so only the width and the click handler are left.
                 OriginThreadCard(
                     originThreadInfo = it,
-                    modifier = Modifier
-                        .clip(MaterialTheme.shapes.small)
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .clickable { onClickOriginThread(it.item) }
-                        .padding(16.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = { onClickOriginThread(it.item) },
                 )
             }
 
@@ -635,11 +687,13 @@ private fun FeedVideoPreview(
     mediaId: String,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
-    onClick: (positionMs: Long) -> Unit = {},
+    onClick: (positionMs: Long, bounds: Rect) -> Unit = { _, _ -> },
 ) {
     val previewState = LocalVideoPreviewState.current
     var player by remember { mutableStateOf<ExoPlayer?>(null) }
     var isFullyVisible by remember { mutableStateOf(false) }
+    // 容器形变的起点：这一格视频封面在窗口里的矩形，点击瞬间交给视频浮层。
+    var bounds by remember { mutableStateOf(Rect.Zero) }
 
     val shutter = remember {
         movableContentOf<Boolean> { FeedVideoShutter(thumbnailUrl, isPipMode = it, contentScale = contentScale) }
@@ -647,6 +701,7 @@ private fun FeedVideoPreview(
 
     Box(
         modifier = modifier
+            .onGloballyPositioned { bounds = it.boundsInWindow() }
             .onNotNull(previewState) {
                 onVisibilityChanged(
                     minDurationMs = VIDEO_MIN_VISIBLE_DURATION_MS,
@@ -656,7 +711,7 @@ private fun FeedVideoPreview(
             }
             .clickableNoIndication {
                 previewState?.onEnterVideoView(mediaId)
-                onClick(MediaUtil.getCurrentPositionMs(player))
+                onClick(MediaUtil.getCurrentPositionMs(player), bounds)
             },
     ) {
         if (previewState == null || previewState.isInVideoViewMode) {

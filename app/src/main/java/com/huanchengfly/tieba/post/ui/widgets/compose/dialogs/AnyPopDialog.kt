@@ -44,7 +44,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.window.SecureFlagPolicy
 import androidx.core.view.WindowCompat
-import com.huanchengfly.tieba.post.LocalUISettings
 import com.huanchengfly.tieba.post.enableBackgroundBlur
 import kotlinx.coroutines.delay
 
@@ -118,7 +117,7 @@ private fun DialogFullScreen(
             val activityWindow = getActivityWindow()
             val dialogWindow = getDialogWindow()
             val parentView = LocalView.current.parent as View
-            val enableBackgroundBlur = !LocalUISettings.current.reduceEffect
+            val enableBackgroundBlur = true
 
             SideEffect {
                 if (activityWindow != null && dialogWindow != null && !isBackPress && !isAnimateLayout) {

@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post.ui.page.main.explore.hot
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,7 +18,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -51,14 +49,17 @@ import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.theme.YellowA700
 import com.huanchengfly.tieba.post.ui.common.theme.compose.BebasFamily
 import com.huanchengfly.tieba.post.ui.common.theme.compose.clickableNoIndication
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
 import com.huanchengfly.tieba.post.ui.models.explore.HotTab
 import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.main.explore.ConsumeThreadPageResult
 import com.huanchengfly.tieba.post.ui.page.main.explore.LaunchedFabStateEffect
 import com.huanchengfly.tieba.post.ui.page.main.explore.createThreadClickListeners
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
+import top.yukonga.miuix.kmp.basic.Card
+import top.yukonga.miuix.kmp.squircle.squircleBackground
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
-import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCardPlaceholder
+import com.huanchengfly.tieba.post.ui.widgets.compose.states.MiuixLoadingIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.ProvideContentColor
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalGrid
@@ -121,87 +122,90 @@ fun HotPage(
                 modifier = modifier.fillMaxSize().testColumn(),
                 state = listState,
                 contentPadding = contentPadding,
+                verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 if (topicList.isNotEmpty()) {
+                    // One Miuix card for the whole 话题榜 block, sized like the feed cards below (the
+                    // list's contentPadding already supplies the 16dp gutter, so no extra horizontal
+                    // padding here). The divider that used to close this section is gone: the card
+                    // boundary separates the two groups on its own.
                     item(key = HotType.TopicHeader, contentType = HotType.TopicHeader) {
-                        Chip(
-                            text = stringResource(id = R.string.hot_topic_rank),
-                            modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp)
-                        )
-                    }
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            Chip(
+                                text = stringResource(id = R.string.hot_topic_rank),
+                                modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp)
+                            )
 
-                    item(key = HotType.TopicList, contentType = HotType.TopicList) {
-                        VerticalGrid(
-                            column = 2,
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            itemsIndexed(items = topicList) { index, (topicId, topicName, topicTag) ->
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier
-                                        .padding(vertical = 8.dp)
-                                        .clickable {
-                                            navigator.navigateDebounced(Destination.HotTopicDetail(topicId, topicName))
-                                        }
-                                ) {
-                                    Text(
-                                        text = (index + 1).toString(),
-                                        fontWeight = FontWeight.Bold,
-                                        color = when (index) {
-                                            0 -> RedA700
-                                            1 -> OrangeA700
-                                            2 -> YellowA700
-                                            else -> colorScheme.onSurfaceVariant
-                                        },
-                                        fontFamily = BebasFamily,
-                                        modifier = Modifier.padding(bottom = 2.dp)
-                                    )
-                                    Text(
-                                        text = topicName,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    when (topicTag) {
-                                        2 -> TopicTag(isHot = true)
-
-                                        1 -> TopicTag(isHot = false)
-
-                                        // else ->
-                                    }
-                                }
-                            }
-                            item {
-                                ProvideContentColor(color = colorScheme.secondary) {
+                            VerticalGrid(
+                                column = 2,
+                                // fillMaxWidth: inside Card the grid would otherwise shrink to its
+                                // intrinsic width, which collapses the two-column layout.
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                itemsIndexed(items = topicList) { index, (topicId, topicName, topicTag) ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                                         modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickableNoIndication(onClick = threadClickListeners.onNavigateHotTopicList)
-                                            .padding(bottom = 8.dp)
+                                            .padding(vertical = 8.dp)
+                                            .clickable {
+                                                navigator.navigateDebounced(Destination.HotTopicDetail(topicId, topicName))
+                                            }
                                     ) {
                                         Text(
-                                            text = stringResource(id = R.string.tip_more_topic),
-                                            fontWeight = FontWeight.Bold
+                                            text = (index + 1).toString(),
+                                            fontWeight = FontWeight.Bold,
+                                            color = when (index) {
+                                                0 -> RedA700
+                                                1 -> OrangeA700
+                                                2 -> YellowA700
+                                                else -> colorScheme.onSurfaceVariant
+                                            },
+                                            fontFamily = BebasFamily,
+                                            modifier = Modifier.padding(bottom = 2.dp)
                                         )
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
+                                        Text(
+                                            text = topicName,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f)
                                         )
+                                        when (topicTag) {
+                                            2 -> TopicTag(isHot = true)
+
+                                            1 -> TopicTag(isHot = false)
+
+                                            // else ->
+                                        }
+                                    }
+                                }
+                                item {
+                                    ProvideContentColor(color = colorScheme.secondary) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickableNoIndication(onClick = threadClickListeners.onNavigateHotTopicList)
+                                                .padding(bottom = 8.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(id = R.string.tip_more_topic),
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Icon(
+                                                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                    item(key = "TopicDivider") {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(start = 16.dp, top = 4.dp, end = 16.dp, bottom = 8.dp),
-                            thickness = 2.dp
-                        )
                     }
                 }
 
@@ -212,8 +216,16 @@ fun HotPage(
                 }
 
                 if (threadList.isNullOrEmpty()) {
-                    items(4, contentType = { HotType.PlaceHolder }) {
-                        FeedCardPlaceholder()
+                    // One centred ring instead of four shimmer cards (see ForumThreadsPlaceholder).
+                    item(contentType = { HotType.PlaceHolder }) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 48.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            MiuixLoadingIndicator()
+                        }
                     }
                     return@LazyColumn
                 }
@@ -236,16 +248,18 @@ fun HotPage(
                     contentType = { _,_ -> HotType.Thread }
                 ) { index, thread ->
                     trace(MacrobenchmarkConstant.TRACE_FEED_CARD) {
-                        FeedCard(
-                            thread = thread,
-                            onClick = threadClickListeners.onClicked,
-                            onLike = viewModel::onThreadLikeClicked,
-                            onClickReply = threadClickListeners.onReplyClicked,
-                            onClickUser = threadClickListeners.onAuthorClicked,
-                            onClickForum = threadClickListeners.onForumClicked,
-                            cardDivider = index != threadList.lastIndex,
-                        ) {
-                            HotRankText(rank = index + 1, hotNum = thread.hotNum)
+                        // One Miuix group card per feed item, no divider lines between them
+                        Card(modifier = Modifier.fillMaxWidth()) {
+                            FeedCard(
+                                thread = thread,
+                                onClick = threadClickListeners.onClicked,
+                                onLike = viewModel::onThreadLikeClicked,
+                                onClickReply = threadClickListeners.onReplyClicked,
+                                onClickUser = threadClickListeners.onAuthorClicked,
+                                onClickForum = threadClickListeners.onForumClicked,
+                            ) {
+                                HotRankText(rank = index + 1, hotNum = thread.hotNum)
+                            }
                         }
                     }
                 }
@@ -261,9 +275,9 @@ fun TopicTag(modifier: Modifier = Modifier, isHot: Boolean) {
         fontSize = 10.sp,
         color = Color.White,
         modifier = modifier
-            .background(
-                color = if (isHot) RedA700 else OrangeA700,
-                shape = MaterialTheme.shapes.extraSmall
+            .squircleBackground(
+                if (isHot) RedA700 else OrangeA700,
+                SquircleCornerRadius.ExtraSmall
             )
             .padding(vertical = 2.dp, horizontal = 4.dp)
     )

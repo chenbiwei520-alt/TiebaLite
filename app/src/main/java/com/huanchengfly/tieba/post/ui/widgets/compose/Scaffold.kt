@@ -1,6 +1,9 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.MutableWindowInsets
 import androidx.compose.foundation.layout.PaddingValues
@@ -18,25 +21,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
+import com.kyant.backdrop.backdrops.layerBackdrop as kyantLayerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop as kyantRememberLayerBackdrop
+import com.kyant.backdrop.backdrops.rememberCombinedBackdrop as kyantRememberCombinedBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.LocalLiquidGlassBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.ProvideRecordingBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.liquidglass.LocalLiquidGlassPopupBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
+import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
+import top.yukonga.miuix.kmp.basic.SnackbarHost as MiuixSnackbarHost
+import top.yukonga.miuix.kmp.basic.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.contentColorFor
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.NonRestartableComposable
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,42 +51,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
 import com.huanchengfly.tieba.post.PaddingNone
 import com.huanchengfly.tieba.post.theme.isTranslucent
-import kotlinx.coroutines.launch
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 
 @Composable
 fun SwipeToDismissSnackbarHost(hostState: SnackbarHostState, modifier: Modifier = Modifier) {
-    val coroutineScope = rememberCoroutineScope()
-    val dismissState = rememberSwipeToDismissBoxState()
-    val isVisible by remember(hostState) { derivedStateOf { hostState.currentSnackbarData != null } }
-
-    LaunchedEffect(isVisible) {
-        if (isVisible && dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
-            dismissState.snapTo(SwipeToDismissBoxValue.Settled)
-        }
-    }
-
-    if (isVisible) {
-        SwipeToDismissBox(
-            state = dismissState,
-            backgroundContent = {},
-            modifier = modifier,
-            gesturesEnabled = hostState.currentSnackbarData?.visuals?.duration != SnackbarDuration.Indefinite,
-            onDismiss = { direction ->
-                if (direction != SwipeToDismissBoxValue.Settled) {
-                    hostState.currentSnackbarData?.dismiss()
-                } else {
-                    coroutineScope.launch { dismissState.reset() }
-                }
-            }
-        ) {
-            SnackbarHost(hostState = hostState)
-        }
-    }
+    // Miuix SnackbarHost with built-in swipe-to-dismiss (HyperOS style snackbar)
+    MiuixSnackbarHost(state = hostState, modifier = modifier)
 }
 
 @Composable
 @NonRestartableComposable
-fun rememberSnackbarHostState(): SnackbarHostState = remember { SnackbarHostState() }
+fun rememberSnackbarHostState(): SnackbarHostState = remember { top.yukonga.miuix.kmp.basic.SnackbarHostState() }
 
 val LocalSnackbarHostState = staticCompositionLocalOf<SnackbarHostState> { error("no scaffold here!") }
 
@@ -94,41 +74,146 @@ fun MyScaffold(
     bottomBar: @Composable () -> Unit = {},
     bottomBarAtop: Boolean = false,
     snackbarHostState: SnackbarHostState = rememberSnackbarHostState(),
-    snackbarHost: @Composable () -> Unit = { SwipeToDismissSnackbarHost(LocalSnackbarHostState.current) },
+    snackbarHost: @Composable () -> Unit = { SwipeToDismissSnackbarHost(snackbarHostState) },
     floatingActionButton: @Composable () -> Unit = {},
     floatingActionButtonPosition: FabPosition = FabPosition.End,
-    backgroundColor: Color = MaterialTheme.colorScheme.run { if (isTranslucent) Color.Transparent else background },
-    contentColor: Color = MaterialTheme.colorScheme.onBackground,
+    backgroundColor: Color = MaterialTheme.colorScheme.run {
+        if (isTranslucent) Color.Transparent else top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface
+    },
+    contentColor: Color = top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onBackground,
     contentWindowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
     content: @Composable (PaddingValues) -> Unit
 ) {
-    CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
-        if (useMD2Layout) {
-            Scaffold(
-                modifier = modifier,
-                topBar = topBar,
-                bottomBar = bottomBar,
-                bottomBarAtop = bottomBarAtop,
-                snackbarHost = snackbarHost,
-                floatingActionButton = floatingActionButton,
-                floatingActionButtonPosition = floatingActionButtonPosition,
-                containerColor = backgroundColor,
-                contentColor = contentColor,
-                contentWindowInsets = contentWindowInsets,
-                content = content
-            )
+    // HyperOS shell: the Miuix Scaffold renders the page structure; the Material-style API above
+    // is preserved so page call sites stay unchanged. useMD2Layout/bottomBarAtop are accepted for
+    // compatibility; the Miuix layout is MD2-style and no caller relies on bottomBarAtop with a
+    // real (non-placeholder) bottom bar.
+    val miuixFabPosition = when (floatingActionButtonPosition) {
+        androidx.compose.material3.FabPosition.Start -> top.yukonga.miuix.kmp.basic.FabPosition.Start
+        androidx.compose.material3.FabPosition.Center -> top.yukonga.miuix.kmp.basic.FabPosition.Center
+        else -> top.yukonga.miuix.kmp.basic.FabPosition.End
+    }
+    CompositionLocalProvider(
+        LocalSnackbarHostState provides snackbarHostState,
+        androidx.compose.material3.LocalContentColor provides contentColor,
+    ) {
+        // Liquid-glass sampling source for this page's dropdowns.
+        //
+        // It has to live INSIDE the Scaffold's `content`: the Scaffold renders its popup layer
+        // outside `content`, so a capture placed here records the page only. A capture wrapped
+        // *around* the Scaffold (or around the whole NavHost) would also record the open popup —
+        // and because a popup panel is an opaque surface, the glass sheet would then blur its own
+        // panel: flat white, no visible highlight, and the effect only faintly showing at the edges.
+        // `Modifier.layerBackdrop` records into an offscreen layer and never changes what is drawn
+        // on screen, so this is visually inert.
+        val glassBackdrop = rememberMiuixBarBackdrop()
+        // Kyant twin of the capture above. The vendored reference dropdowns paint their glass
+        // through Kyant's `drawBackdrop`/`blur` (that is what hyper_schedule itself does), and a
+        // Kyant `Backdrop` is a SEPARATE recording layer from the Miuix one —
+        // `rememberMiuixBarBackdrop` cannot feed it. Recorded on the same box, for the same
+        // reason: the dropdown renders in the Scaffold's popup layer, painted outside `content`.
+        val popupLayerBackdrop = if (isRuntimeShaderSupported()) kyantRememberLayerBackdrop() else null
+        // Second Kyant capture, for the TopBar slot.
+        //
+        // The Scaffold measures its slots as siblings (Body, TopBar, Snackbar, BottomBar, Popup)
+        // and places Body at (0, 0), so the capture above spans the whole screen - but the pixels
+        // under the bar are the page's own, because the bar itself is a sibling drawn on top of it
+        // and never enters the recorded layer. A dropdown that drops from the toolbar therefore
+        // samples a transparent strip exactly where the bar is: the bar shows through the panel's
+        // 0.72 (light) / 0.8 (dark) tint *unblurred*, which reads as "half-transparent sheet, no
+        // blur". hyper_schedule has the same blind spot (its capture also sits inside
+        // `Scaffold { content }`), but Kyant ships the fix: `rememberCombinedBackdrop` composites
+        // several recording layers, each aligned to the consumer's own coordinates, so page + bar
+        // arrive as one backdrop.
+        val barLayerBackdrop = if (isRuntimeShaderSupported()) kyantRememberLayerBackdrop() else null
+        // Handed to the dropdowns as-is: Kyant's `LayerBackdrop` tracks its own recording node's
+        // coordinates, exactly as in hyper_schedule (which passes the raw backdrop too).
+        val popupBackdrop = if (popupLayerBackdrop != null && barLayerBackdrop != null) {
+            kyantRememberCombinedBackdrop(popupLayerBackdrop, barLayerBackdrop)
         } else {
-            androidx.compose.material3.Scaffold(
+            popupLayerBackdrop
+        }
+        CompositionLocalProvider(
+            LocalLiquidGlassBackdrop provides glassBackdrop,
+            LocalLiquidGlassPopupBackdrop provides popupBackdrop,
+        ) {
+            top.yukonga.miuix.kmp.basic.Scaffold(
                 modifier = modifier,
-                topBar = topBar,
+                topBar = {
+                    // Recorded by `barLayerBackdrop` above. `Modifier.layerBackdrop` only fills an
+                    // offscreen layer, so the bar still draws on screen exactly as before.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (barLayerBackdrop != null) {
+                                    Modifier.kyantLayerBackdrop(barLayerBackdrop)
+                                } else {
+                                    Modifier
+                                }
+                            ),
+                    ) {
+                        topBar()
+                    }
+                },
                 bottomBar = bottomBar,
-                snackbarHost = snackbarHost,
                 floatingActionButton = floatingActionButton,
-                floatingActionButtonPosition = floatingActionButtonPosition,
+                floatingActionButtonPosition = miuixFabPosition,
+                snackbarHost = snackbarHost,
                 containerColor = backgroundColor,
-                contentColor = contentColor,
                 contentWindowInsets = contentWindowInsets,
-                content = content
+                content = { padding ->
+                    // `ProvideRecordingBackdrop` marks `glassBackdrop` as already recording for
+                    // everything below, so a page that (mistakenly) applies
+                    // `miuixLayerBackdrop(LocalLiquidGlassBackdrop.current)` to its own content
+                    // becomes a no-op instead of nesting two `record()` calls on one graphics
+                    // layer — which throws "Recording currently in progress" and crashes the page.
+                    // The capturing Box itself must record through the RAW `layerBackdrop`:
+                    // `miuixLayerBackdrop` consults `LocalRecordingBackdrop`, which
+                    // `ProvideRecordingBackdrop` publishes for this whole scope — including this
+                    // Box. Routing the recorder through the guard made it a no-op, so the layer
+                    // only ever contained `rememberMiuixBarBackdrop`'s flat `drawRect(surface)`
+                    // fill: blurring a flat color yields that same flat color, i.e. the
+                    // progressive blur silently rendered nothing while the bar stayed transparent.
+                    // The guard stays in effect for DESCENDANTS (page content), which is where the
+                    // nested-`record()` crash came from.
+                    ProvideRecordingBackdrop(glassBackdrop) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(
+                                    if (glassBackdrop != null) {
+                                        Modifier.layerBackdrop(glassBackdrop)
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                                .then(
+                                    if (popupLayerBackdrop != null) {
+                                        Modifier.kyantLayerBackdrop(popupLayerBackdrop)
+                                    } else {
+                                        Modifier
+                                    }
+                                ),
+                        ) {
+                            // Opaque base INSIDE the recorded subtree.
+                            //
+                            // The Scaffold paints `backgroundColor` on its own node, which is an
+                            // ancestor of this capture, so the recorded layer stays transparent
+                            // wherever the page itself paints nothing - plain list rows, toolbars.
+                            // A dropdown sampling such a layer draws only its own tint over those
+                            // pixels and the *sharp* page stays readable underneath, which is
+                            // exactly why a menu dropping over the toolbar kept a crisp toolbar
+                            // while the rest of the panel looked frosted. hyper_schedule never
+                            // hits this because its screens paint their own full-size background
+                            // inside the capture (AboutScreen draws `Modifier.background(...)`
+                            // under its layer); MyScaffold's pages rely on the Scaffold, so the
+                            // base is painted here. Same colour, same bounds - no visual change.
+                            Box(Modifier.matchParentSize().background(backgroundColor))
+                            content(padding)
+                        }
+                    }
+                },
             )
         }
     }

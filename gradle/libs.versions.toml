@@ -6,6 +6,7 @@ kotlin = "2.3.21"
 coroutines = "1.10.2"
 ksp = "2.3.10"
 wire = "6.0.0"
+miuix = "0.9.4"
 
 #noinspection UnusedVersionCatalogEntry
 compileSdk = "37"
@@ -26,6 +27,7 @@ androidx-room = "2.8.4"
 androidx-work = "2.11.2"
 androidx-media3 = "1.10.1"
 coil = "3.4.0"
+telephoto = "0.16.0"
 junit = "4.13.2"
 mockk = "1.14.11"
 lottie = "6.7.1"
@@ -117,19 +119,31 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 
 lottie = { module = "com.airbnb.android:lottie", version.ref = "lottie" }
 lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottie" }
-haze-blur = { module = "dev.chrisbanes.haze:haze-android", version = "1.7.1" }
+
+# Miuix (HyperOS design language, Compose Multiplatform)
+# Experimental upstream: bump only after reviewing the Miuix CHANGELOG against ui/miuix adapter layer
+miuix-ui = { module = "top.yukonga.miuix.kmp:miuix-ui", version.ref = "miuix" }
+miuix-preference = { module = "top.yukonga.miuix.kmp:miuix-preference", version.ref = "miuix" }
+miuix-icons = { module = "top.yukonga.miuix.kmp:miuix-icons", version.ref = "miuix" }
+miuix-blur = { module = "top.yukonga.miuix.kmp:miuix-blur", version.ref = "miuix" }
+# Continuous-corner (squircle) fills / clips / strokes. Also arrives transitively through
+# miuix-ui, but declared explicitly because the app calls its modifiers and path builders itself.
+miuix-squircle = { module = "top.yukonga.miuix.kmp:miuix-squircle", version.ref = "miuix" }
+
+# Kyant0 AndroidLiquidGlass backdrop (https://github.com/Kyant0/AndroidLiquidGlass) — powers the
+# liquid-glass bottom bar: drawBackdrop effects plus rememberCombinedBackdrop multi-layer capture
+# (page + accent-tinted icon copy), which miuix-blur has no primitive for. AGSL-based: API 33+.
 
 coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
 coil-gif = { module = "io.coil-kt.coil3:coil-gif", version.ref = "coil" }
 coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
 
+telephoto-zoomable-image-coil3 = { module = "me.saket.telephoto:zoomable-image-coil3", version.ref = "telephoto" }
+
 google-gson = { module = "com.google.code.gson:gson", version = "2.13.2" }
-godaddy-colorpicker = { module = "com.godaddy.android.colorpicker:compose-color-picker", version = "0.7.0" }
 squareup-okhttp3 = { module = "com.squareup.okhttp3:okhttp", version = "5.4.0" }
 squareup-retrofit2 = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit2" }
 squareup-retrofit2-wire = { module = "com.squareup.retrofit2:converter-wire", version.ref = "retrofit2" }
-subsampling-image = { module = "com.davemorrissey.labs:subsampling-scale-image-view-androidx", version = "3.10.0" }
-iielse-imageviewer = { module = "com.github.iielse:imageviewer", version = "2.1.23" }
 yalantis-ucrop = { module = "com.github.yalantis:ucrop", version = "2.2.11" }
 
 liyujiang-oadi = { module = "com.github.gzu-liyujiang:Android_CN_OAID", version = "4.2.4" }

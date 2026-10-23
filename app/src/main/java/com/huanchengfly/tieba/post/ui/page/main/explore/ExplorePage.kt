@@ -2,20 +2,17 @@ package com.huanchengfly.tieba.post.ui.page.main.explore
 
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.FabPosition
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SecondaryTabRow
-import androidx.compose.material3.Tab
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,13 +24,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.util.fastForEachIndexed
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavOptions
 import androidx.navigation.Navigator
@@ -43,12 +37,14 @@ import com.huanchengfly.tieba.post.arch.emitGlobalEvent
 import com.huanchengfly.tieba.post.arch.isScrolling
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.navigateDebounced
+import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.toastShort
+import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
 import com.huanchengfly.tieba.post.ui.common.LocalAnimatedVisibilityScope
 import com.huanchengfly.tieba.post.ui.common.LocalSharedTransitionScope
 import com.huanchengfly.tieba.post.ui.common.animateEnterExit
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onNotNull
-import com.huanchengfly.tieba.post.ui.common.theme.compose.withNonNull
 import com.huanchengfly.tieba.post.ui.models.Like
 import com.huanchengfly.tieba.post.ui.models.ThreadItem
 import com.huanchengfly.tieba.post.ui.page.Destination
@@ -73,16 +69,18 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.AccountNavIconIfCompact
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultBackToTopFAB
-import com.huanchengfly.tieba.post.ui.widgets.compose.FancyAnimatedIndicatorWithModifier
-import com.huanchengfly.tieba.post.ui.widgets.compose.LocalHazeState
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.TbHazeState
 import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBarPaged
-import com.huanchengfly.tieba.post.ui.widgets.compose.hazeSource
+import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberPagerListStates
+import com.huanchengfly.tieba.post.ui.widgets.compose.staticTopBarHeight
 import com.huanchengfly.tieba.post.utils.BooleanBitSet
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Search
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixEnterAlwaysScrollBehavior
 
 sealed class ExplorePageItem(val title: Int){
     object Concern : ExplorePageItem(R.string.title_concern)
@@ -134,43 +132,28 @@ fun createThreadClickListeners(
 @Composable
 private fun ExplorePageTab(
     pagerState: PagerState,
-    pages: List<ExplorePageItem>
+    pages: List<ExplorePageItem>,
+    backdrop: LayerBackdrop? = null,
 ) {
     val coroutineScope = rememberCoroutineScope()
 
-    SecondaryTabRow(
+    // HyperOS style tab row: outlined unselected pills, selected one filled with the accent color
+    MiuixTabRow(
+        tabs = pages.map { stringResource(id = it.title) },
         selectedTabIndex = pagerState.currentPage,
-        indicator = {
-            FancyAnimatedIndicatorWithModifier(index = pagerState.currentPage)
+        onTabSelected = { index ->
+            if (index == pagerState.currentPage) return@MiuixTabRow
+            coroutineScope.launch {
+                if (abs(pagerState.currentPage - index) > 1) {
+                    pagerState.scrollToPage(index)
+                } else {
+                    pagerState.animateScrollToPage(index)
+                }
+            }
         },
-        containerColor = Color.Transparent,
-        contentColor = MaterialTheme.colorScheme.primary,
-    ) {
-        pages.fastForEachIndexed { index, item ->
-            val selected = pagerState.currentPage == index
-            Tab(
-                text = {
-                    Text(
-                        text = stringResource(id = item.title),
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        letterSpacing = 1.sp
-                    )
-                },
-                selected = selected,
-                onClick = {
-                    if (selected) return@Tab
-                    coroutineScope.launch {
-                        if (abs(pagerState.currentPage - index) > 1) {
-                            pagerState.scrollToPage(index)
-                        } else {
-                            pagerState.animateScrollToPage(index)
-                        }
-                    }
-                },
-                unselectedContentColor = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+        backdrop = backdrop,
+    )
 }
 
 // Note: Obtain Root AnimatedVisibilityScope by LocalAnimatedVisibilityScope.current
@@ -182,7 +165,6 @@ fun AnimatedVisibilityScope.ExplorePage(loggedIn: Boolean) {
     val navigationSuiteType = calculateMainNavigationSuiteType()
     // Hide FAB on FloatingNavigationBarCompact
     val isFloatingNavBarCompat = navigationSuiteType === MainNavigationSuiteType.FloatingNavigationBarCompact
-    val hazeState = LocalHazeState.current
     val sharedTransitionScope = LocalSharedTransitionScope.current
 
     val pages = remember(loggedIn) {
@@ -196,7 +178,7 @@ fun AnimatedVisibilityScope.ExplorePage(loggedIn: Boolean) {
     val listStates = rememberPagerListStates(pages.size)
 
     val scrollOrientationConnection = rememberScrollOrientationConnection()
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val scrollBehavior = rememberMiuixEnterAlwaysScrollBehavior()
 
     // FAB visibility of each page
     var fabHideStates by remember(pages) { mutableStateOf(BooleanBitSet()) }
@@ -212,24 +194,40 @@ fun AnimatedVisibilityScope.ExplorePage(loggedIn: Boolean) {
         listState = { listStates.getOrNull(pagerState.currentPage) }
     )
 
+    // Feeds the liquid glass fill of the tab row's pills
+    val tabBackdrop = rememberMiuixBarBackdrop()
+
     MyScaffold(
-        useMD2Layout = hazeState == null,
+        useMD2Layout = true,
         topBar = {
             TopAppBarPaged(
                 modifier = Modifier
                     .topAppBarBlurEffect(
                         sharedTransitionScope = sharedTransitionScope,
                         rootAnimatedVisibilityScope = LocalAnimatedVisibilityScope.current,
-                        hazeState = hazeState,
-                        blurEnabled = { !fabHideStates[pagerState.currentPage] || pagerState.isScrolling }
+                                blurEnabled = { !fabHideStates[pagerState.currentPage] || pagerState.isScrolling },
+                        // The Miuix progressive blur below replaces the flat haze blur
                     ),
-                title = { Text(text = stringResource(R.string.title_explore)) },
+                // The tab row takes over the title slot so it sits on the same row as the search
+                // action instead of dropping to a second row. The page name is dropped: the tabs
+                // already identify the page.
+                title = {
+                    ExplorePageTab(
+                        pagerState = pagerState,
+                        pages = pages,
+                        backdrop = tabBackdrop,
+                    )
+                },
+                // Keep the tab row centred like it was in the `content` slot: that slot rendered
+                // inside a Column with horizontalAlignment = CenterHorizontally, but the title slot
+                // defaults to CenterStart.
+                titleHorizontalAlignment = Alignment.CenterHorizontally,
                 navigationIcon = {
                     AccountNavIconIfCompact(onLoginClicked = { navigator.navigate(Destination.Login) })
                 },
                 actions = {
                     ActionItem(
-                        icon = Icons.Rounded.Search,
+                        icon = MiuixIcons.Search,
                         contentDescription = R.string.title_search,
                         onClick = { navigator.navigateDebounced(route = Search) }
                     )
@@ -238,10 +236,9 @@ fun AnimatedVisibilityScope.ExplorePage(loggedIn: Boolean) {
                 canScrollBackward = { // No transition running && canScrollBackward
                     sharedTransitionScope?.isTransitionActive != true && !transition.isRunning &&
                             listStates[pagerState.currentPage].canScrollBackward
-                }
-            ) {
-                ExplorePageTab(pagerState = pagerState, pages = pages)
-            }
+                },
+                backdrop = tabBackdrop,
+            )
         },
         bottomBar = bottomNavigationPlaceholder, // MainPage BottomNavBar placeholder
         bottomBarAtop = navigationSuiteType.isFloatingNavigationBar,
@@ -261,36 +258,57 @@ fun AnimatedVisibilityScope.ExplorePage(loggedIn: Boolean) {
         },
         floatingActionButtonPosition = if (isFloatingNavBarCompat) FabPosition.EndOverlay else FabPosition.End,
     ) { contentPadding ->
-        Container(
-            modifier = Modifier.onNotNull(hazeState) { hazeSource(state = it.state) }
-        ) {
-            HorizontalPager(
-                state = pagerState,
-                key = { pages[it].title },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(scrollOrientationConnection),
-                verticalAlignment = Alignment.Top,
-                flingBehavior = PagerDefaults.flingBehavior(pagerState, snapPositionalThreshold = 0.75f)
-            ) { index ->
-                // Attach ScrollBehavior connections
-                val modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
-                val onHideFab: (Boolean) -> Unit = { hideFab ->
-                    fabHideStates = fabHideStates.set(index, hideFab)
-                }
-                val listState = listStates[index]
-
-                when (pages[index]) {
-                    ExplorePageItem.Concern -> {
-                        ConcernPage(modifier, contentPadding, listState, navigator, onHideFab)
+        // The scaffold's padding is the *measured* top bar height, which can come back one status
+        // bar short for a frame or two — the whole feed (and the refresh tip anchored on the same
+        // padding) then slides up under the bar and snaps back. The bar's resting height is
+        // deterministic, so hold the top inset at that value: a no-op while the measurement is
+        // right, and no jump while it is not.
+        val topBarHeight = staticTopBarHeight()
+        val stableContentPadding =
+            if (contentPadding.calculateTopPadding() >= topBarHeight) {
+                contentPadding
+            } else {
+                PaddingValues(top = topBarHeight, bottom = contentPadding.calculateBottomPadding())
+            }
+        // Feed cards need their own screen margins; the scaffold padding is inset-only
+        val listContentPadding = stableContentPadding + PaddingValues(horizontal = 16.dp)
+        // The blur capture must be FULL WIDTH — same rule as `ThreadPage`. `Container` narrows its
+        // child to a centred column on wide screens (75% once the window is expanded, i.e. any
+        // landscape phone), while the app bar's progressive-blur band spans the whole screen width.
+        // A capture attached inside `Container` would be narrower than the band, and
+        // `progressiveTextureBlur`'s shader clamps out-of-bounds samples to the capture's edge,
+        // smearing the column's edge colour across the side margins as flat slabs with hard
+        // vertical seams.
+        Box(modifier = Modifier.fillMaxWidth().miuixLayerBackdrop(tabBackdrop)) {
+            Container {
+                HorizontalPager(
+                    state = pagerState,
+                    key = { pages[it].title },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(scrollOrientationConnection),
+                    verticalAlignment = Alignment.Top,
+                    flingBehavior = PagerDefaults.flingBehavior(pagerState, snapPositionalThreshold = 0.75f)
+                ) { index ->
+                    // Attach ScrollBehavior connections
+                    val modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                    val onHideFab: (Boolean) -> Unit = { hideFab ->
+                        fabHideStates = fabHideStates.set(index, hideFab)
                     }
+                    val listState = listStates[index]
 
-                    ExplorePageItem.Personalized -> {
-                        PersonalizedPage(modifier, contentPadding, listState, navigator, onHideFab)
-                    }
+                    when (pages[index]) {
+                        ExplorePageItem.Concern -> {
+                            ConcernPage(modifier, listContentPadding, listState, navigator, onHideFab)
+                        }
 
-                    ExplorePageItem.Hot -> {
-                        HotPage(modifier, contentPadding, listState, navigator, onHideFab)
+                        ExplorePageItem.Personalized -> {
+                            PersonalizedPage(modifier, listContentPadding, listState, navigator, onHideFab)
+                        }
+
+                        ExplorePageItem.Hot -> {
+                            HotPage(modifier, listContentPadding, listState, navigator, onHideFab)
+                        }
                     }
                 }
             }
@@ -302,22 +320,19 @@ context(mainAnimatedContentScope: AnimatedVisibilityScope)
 fun Modifier.topAppBarBlurEffect(
     sharedTransitionScope: SharedTransitionScope?,
     rootAnimatedVisibilityScope: AnimatedVisibilityScope?,
-    hazeState: TbHazeState?,
     blurEnabled: () -> Boolean,
-): Modifier = this then Modifier
-    .onNotNull(rootAnimatedVisibilityScope, sharedTransitionScope) { (rootAnimatedVisibilityScope, sharedTransitionScope) ->
+): Modifier {
+    val animated = this.onNotNull(rootAnimatedVisibilityScope, sharedTransitionScope) { (rootAnimatedVisibilityScope, sharedTransitionScope) ->
         animateEnterExit(
             zIndexInOverlay = 1.0f,
             animatedVisibilityScope = rootAnimatedVisibilityScope,
             sharedTransitionScope = sharedTransitionScope
         )
     }
-    .withNonNull(hazeState) {
-        Modifier.defaultHazeEffect {
-            // Disable background blur when MainNavHost transition is running
-            this.blurEnabled = !mainAnimatedContentScope.transition.isRunning && blurEnabled()
-        }
-    }
+    // hazeBlur = false when the bar already draws the Miuix progressive blur: stacking the flat
+    // haze blur on top of it would wash the ramp out into a uniform smear.
+    return animated
+}
 
 @Composable
 fun LaunchedFabStateEffect(

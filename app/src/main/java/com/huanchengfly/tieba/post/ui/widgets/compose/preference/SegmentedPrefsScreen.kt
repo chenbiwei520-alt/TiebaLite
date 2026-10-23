@@ -11,9 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.ListItemShapes
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -25,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -33,7 +29,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.repository.user.Settings
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onCase
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
-import com.huanchengfly.tieba.post.ui.widgets.compose.Switch
 import com.huanchengfly.tieba.post.ui.widgets.compose.TimePickerDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.utils.HmTime
@@ -42,13 +37,21 @@ import kotlin.reflect.KFunction
 import kotlin.reflect.KProperty1
 import kotlin.reflect.full.instanceParameter
 import kotlin.reflect.full.memberFunctions
+import top.yukonga.miuix.kmp.basic.SmallTitle
+import top.yukonga.miuix.kmp.basic.Switch as MiuixSwitch
 
 interface SegmentedPrefsScope{
 
     /**
      * Adds a custom preference to the [SegmentedPrefsScreen].
+     *
+     * The [position] tells the row how to round its corners so that consecutive rows of one group
+     * read as a single continuous card; pass it to [SegmentedPreference].
      */
-    fun customPreference(key: Any? = null, content: @Composable LazyItemScope.(shapes: ListItemShapes) -> Unit)
+    fun customPreference(
+        key: Any? = null,
+        content: @Composable LazyItemScope.(position: PreferenceGroupPosition) -> Unit
+    )
 
     /**
      * Adds a clickable preference to the [SegmentedPrefsScreen].
@@ -134,7 +137,12 @@ interface SegmentedPrefsScope{
     /**
      * Adds grouped preferences to the [SegmentedPrefsScreen].
      *
+     * The group is rendered as a Miuix [SmallTitle] section label followed by the rows, which
+     * together read as one continuous card.
+     *
      * @param title group title.
+     * @param titleVerticalPadding kept for call-site compatibility; the section label now uses the
+     *   [SmallTitle] padding so it matches the rest of the HyperOS settings surface.
      * @param verticalPadding vertical padding to be applied on this group.
      * @param content a block which describes the child preferences.
      */
@@ -216,7 +224,7 @@ private open class SegmentedPrefsScopeImpl(
     lazyListScope: LazyListScope,
 ): SegmentedPrefsScope, LazyListScope by lazyListScope {
 
-    /** For ListItemShapes type tracking, see [segmentedShapes] */
+    /** For group position tracking, see [rowPosition] */
     protected val itemTypes: MutableList<ItemType> = mutableListOf()
 
     val itemsCount: Int
@@ -225,16 +233,19 @@ private open class SegmentedPrefsScopeImpl(
     protected inline fun prefsItem(
         key: Any? = null,
         contentType: ItemType,
-        crossinline content: @Composable LazyItemScope.(shapes: ListItemShapes) -> Unit
+        crossinline content: @Composable LazyItemScope.(position: PreferenceGroupPosition) -> Unit
     ) {
         val index = itemsCount
         item(key, contentType) {
-            content(this@SegmentedPrefsScopeImpl.segmentedShapes(index))
+            content(this@SegmentedPrefsScopeImpl.rowPosition(index))
         }
         itemTypes.add(contentType)
     }
 
-    override fun customPreference(key: Any?, content: @Composable LazyItemScope.(shapes: ListItemShapes) -> Unit) {
+    override fun customPreference(
+        key: Any?,
+        content: @Composable LazyItemScope.(position: PreferenceGroupPosition) -> Unit
+    ) {
         prefsItem(key, contentType = ItemType.Custom, content)
     }
 
@@ -246,10 +257,10 @@ private open class SegmentedPrefsScopeImpl(
         trailingContent: @Composable (() -> Unit)?,
         enabled: Boolean
     ) {
-        prefsItem(contentType = ItemType.Clickable) { shapes ->
+        prefsItem(contentType = ItemType.Clickable) { position ->
             SegmentedPreference(
                 title = title,
-                shapes = shapes,
+                position = position,
                 leadingIcon = icon,
                 trailingContent = trailingContent,
                 summary = summary,
@@ -291,7 +302,7 @@ private open class SegmentedPrefsScopeImpl(
         optionsIconSupplier: (@Composable (T) -> Unit)?,
         leadingIcon: ImageVector?,
     ) {
-        prefsItem(key = title, contentType = ItemType.Clickable) { shapes ->
+        prefsItem(key = title, contentType = ItemType.Clickable) { position ->
             SegmentedListPreference(
                 value = value,
                 title = title,
@@ -300,7 +311,7 @@ private open class SegmentedPrefsScopeImpl(
                 optionsIconSupplier = optionsIconSupplier,
                 useSelectedAsSummary = useSelectedAsSummary,
                 leadingIcon = leadingIcon,
-                shapes = shapes,
+                position = position,
                 onValueChange = onValueChange
             )
         }
@@ -315,12 +326,12 @@ private open class SegmentedPrefsScopeImpl(
         leadingIcon: ImageVector?,
         enabled: Boolean
     ) {
-        prefsItem(contentType = ItemType.Clickable) { shapes ->
+        prefsItem(contentType = ItemType.Clickable) { position ->
             val dialogState = rememberDialogState()
 
             SegmentedPreference(
                 title = title,
-                shapes = shapes,
+                position = position,
                 leadingIcon = leadingIcon?.let { { Icon(imageVector = it, contentDescription = null) } },
                 summary = summary,
                 enabled = enabled,
@@ -349,36 +360,34 @@ private open class SegmentedPrefsScopeImpl(
         verticalPadding: Dp,
         content: SegmentedPrefsScope.() -> Unit
     ) {
+        val sectionSpacing: Dp = if (verticalPadding > Dp.Hairline) verticalPadding else GroupSpacing
         itemTypes.add(ItemType.GroupHeader)
+        if (title == null && verticalPadding > Dp.Hairline) {
+            item(contentType = ItemType.GroupHeader) {
+                Spacer(modifier = Modifier.height(verticalPadding))
+            }
+        }
         if (title != null) {
             item(key = title, contentType = ItemType.GroupHeader) {
-                Text(
+                SmallTitle(
                     text = stringResource(title),
-                    modifier = Modifier
-                        .onCase(verticalPadding > Dp.Hairline) { padding(top = verticalPadding) }
-                        .padding(horizontal = 8.dp, vertical = titleVerticalPadding),
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.onCase(verticalPadding > Dp.Hairline) {
+                        padding(top = verticalPadding)
+                    },
                 )
-            }
-        } else if (verticalPadding > Dp.Hairline) {
-            item {
-                Spacer(modifier = Modifier.height(verticalPadding))
             }
         }
         content()
         itemTypes.add(ItemType.GroupEnd)
-        if (verticalPadding > Dp.Hairline) {
-            item(contentType = ItemType.GroupEnd) {
-                Spacer(modifier = Modifier.height(verticalPadding))
-            }
+        // Always separate groups so consecutive group cards do not butt together
+        item(contentType = ItemType.GroupEnd) {
+            Spacer(modifier = Modifier.height(sectionSpacing))
         }
     }
 
     @Stable
     @Composable
-    protected fun segmentedShapes(index: Int): ListItemShapes {
+    protected fun rowPosition(index: Int): PreferenceGroupPosition {
         val count = itemTypes.size
         val isFirstItem = index == 0 ||
                 itemTypes.getOrNull(index - 1)?.let { it is ItemType.GroupHeader || it is ItemType.GroupEnd } == true
@@ -387,16 +396,19 @@ private open class SegmentedPrefsScopeImpl(
                 itemTypes.getOrNull(index + 1)?.let { it is ItemType.GroupHeader || it is ItemType.GroupEnd } == true
 
         return when {
-            isFirstItem && isLastItem -> ListItemDefaults.shapes().run { copy(shape = selectedShape) }
+            isFirstItem && isLastItem -> PreferenceGroupPosition.Single
 
-            isFirstItem -> ListItemDefaults.segmentedShapes(index = 0, count = count)
+            isFirstItem -> PreferenceGroupPosition.First
 
-            isLastItem -> ListItemDefaults.segmentedShapes(index = index, count = index + 1)
+            isLastItem -> PreferenceGroupPosition.Last
 
-            else -> ListItemDefaults.segmentedShapes(index, count)
+            else -> PreferenceGroupPosition.Middle
         }
     }
 }
+
+/** Spacing inserted after every group so consecutive group cards stay visually separate. */
+private val GroupSpacing = 12.dp
 
 private class SettingsSegmentedPrefsScopeImpl<T>(
     lazyListScope: LazyListScope,
@@ -415,7 +427,7 @@ private class SettingsSegmentedPrefsScopeImpl<T>(
         enabled: Boolean,
         onCheckedChange: ((Boolean) -> Unit)?,
     ) {
-        prefsItem(key = title, contentType = ItemType.Toggleable) { shapes ->
+        prefsItem(key = title, contentType = ItemType.Toggleable) { position ->
             val checked = property.get(this@SettingsSegmentedPrefsScopeImpl.currentPreference)
             val interactionSource = remember { MutableInteractionSource() }
             SegmentedPreference(
@@ -425,15 +437,14 @@ private class SettingsSegmentedPrefsScopeImpl<T>(
                     this@SettingsSegmentedPrefsScopeImpl.saver.update(property, newCheckedState)
                     onCheckedChange?.invoke(newCheckedState)
                 },
-                shapes = shapes,
+                position = position,
                 enabled = enabled,
                 leadingIcon = leadingIcon,
                 trailingContent = {
-                    Switch(
+                    MiuixSwitch(
                         checked = checked,
                         enabled = enabled,
                         onCheckedChange = null,
-                        interactionSource = interactionSource,
                     )
                 },
                 summary = summary,
@@ -453,7 +464,7 @@ private class SettingsSegmentedPrefsScopeImpl<T>(
         enabled: Boolean,
         onValueChanged: ((K) -> Unit)?,
     ) {
-        prefsItem(key = title, contentType = ItemType.Clickable) { shapes ->
+        prefsItem(key = title, contentType = ItemType.Clickable) { position ->
             val context = LocalContext.current
             val stringOptions: StringLabelOptions<K> = remember(options) {
                 options.mapValues { (_, optionSummary: Int) -> context.getString(optionSummary) }
@@ -467,7 +478,7 @@ private class SettingsSegmentedPrefsScopeImpl<T>(
                 optionsIconSupplier = optionsIconSupplier,
                 useSelectedAsSummary = useSelectedAsSummary,
                 leadingIcon = leadingIcon,
-                shapes = shapes,
+                position = position,
                 enabled = enabled,
                 onValueChange = { newOption ->
                     this@SettingsSegmentedPrefsScopeImpl.saver.update(property, newOption)
@@ -523,7 +534,7 @@ fun <T> SegmentedPrefsScreen(
     settings: Settings<T>,
     initialValue: T,
     contentPadding: PaddingValues = PaddingValues.Zero,
-    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(2.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(0.dp),
     content: SettingsSegmentedPrefsScope<T>.() -> Unit
 ) {
     val latestContent by rememberUpdatedState(content)
@@ -555,7 +566,7 @@ fun <T> SegmentedPrefsScreen(
 fun SegmentedTextPrefsScreen(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues.Zero,
-    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(2.dp),
+    verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(0.dp),
     content: SegmentedPrefsScope.() -> Unit
 ) {
     val latestContent by rememberUpdatedState(content)

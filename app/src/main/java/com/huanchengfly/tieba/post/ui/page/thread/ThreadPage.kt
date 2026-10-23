@@ -1,69 +1,48 @@
 package com.huanchengfly.tieba.post.ui.page.thread
 
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.calculateEndPadding
-import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.plus
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ChromeReaderMode
-import androidx.compose.material.icons.automirrored.rounded.ChromeReaderMode
-import androidx.compose.material.icons.automirrored.rounded.Sort
-import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Face6
-import androidx.compose.material.icons.rounded.FaceRetouchingOff
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.Report
 import androidx.compose.material.icons.rounded.RocketLaunch
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material.icons.rounded.VerticalAlignTop
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.Button
-import androidx.compose.material3.FloatingToolbarDefaults
-import androidx.compose.material3.FloatingToolbarExitDirection.Companion.Bottom
-import androidx.compose.material3.FloatingToolbarScrollBehavior
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
+import top.yukonga.miuix.kmp.basic.SnackbarDuration
+import top.yukonga.miuix.kmp.basic.SnackbarHostState
+import top.yukonga.miuix.kmp.basic.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipDefaults.rememberTooltipPositionProvider
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -80,83 +59,64 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastFirstOrNull
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.huanchengfly.tieba.post.LocalHabitSettings
-import com.huanchengfly.tieba.post.LocalUISettings
 import com.huanchengfly.tieba.post.MacrobenchmarkConstant
-import com.huanchengfly.tieba.post.NoWindowInsets
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.CommonUiEvent
 import com.huanchengfly.tieba.post.arch.GlobalEvent
 import com.huanchengfly.tieba.post.arch.collectUiEventWithLifecycle
-import com.huanchengfly.tieba.post.arch.isFullyCollapsed
-import com.huanchengfly.tieba.post.arch.isOverlapping
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.navigateDebounced
-import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
-import com.huanchengfly.tieba.post.theme.isTranslucent
 import com.huanchengfly.tieba.post.toastShort
+import com.huanchengfly.tieba.post.theme.LikeRed
 import com.huanchengfly.tieba.post.ui.common.FadedVisibility
-import com.huanchengfly.tieba.post.ui.common.LocalAnimatedVisibilityScope
-import com.huanchengfly.tieba.post.ui.common.LocalSharedTransitionScope
-import com.huanchengfly.tieba.post.ui.common.animateEnterExit
-import com.huanchengfly.tieba.post.ui.common.defaultVerticalEnterTransition
-import com.huanchengfly.tieba.post.ui.common.defaultVerticalExitTransition
-import com.huanchengfly.tieba.post.ui.common.theme.compose.clickableNoIndication
-import com.huanchengfly.tieba.post.ui.common.theme.compose.onNotNull
-import com.huanchengfly.tieba.post.ui.common.theme.compose.withNonNull
 import com.huanchengfly.tieba.post.ui.models.Like
 import com.huanchengfly.tieba.post.ui.models.LikeZero
 import com.huanchengfly.tieba.post.ui.models.PostData
 import com.huanchengfly.tieba.post.ui.models.SimpleForum
-import com.huanchengfly.tieba.post.ui.models.UserData
 import com.huanchengfly.tieba.post.ui.page.Destination.Forum
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.setResult
 import com.huanchengfly.tieba.post.ui.page.threadstore.ThreadStoreUiEvent
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
+import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultFloatingActionButtonMenuItem
+import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultToggleFloatingActionButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.BlurScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.CardHorizontalSpacing
+import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
 import com.huanchengfly.tieba.post.ui.widgets.compose.CenterAlignedTopAppBar
+import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.Dialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogNegativeButton
-import com.huanchengfly.tieba.post.ui.widgets.compose.ListMenuItem
-import com.huanchengfly.tieba.post.ui.widgets.compose.LocalHazeState
-import com.huanchengfly.tieba.post.ui.widgets.compose.PlainTooltipBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.PromptDialog
-import com.huanchengfly.tieba.post.ui.widgets.compose.ProvideContentColor
 import com.huanchengfly.tieba.post.ui.widgets.compose.StickyHeaderOverlay
 import com.huanchengfly.tieba.post.ui.widgets.compose.StrongBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeToDismissSnackbarHost
-import com.huanchengfly.tieba.post.ui.widgets.compose.VerticalGrid
-import com.huanchengfly.tieba.post.ui.widgets.compose.collapsedFraction
 import com.huanchengfly.tieba.post.ui.widgets.compose.dialogs.AnyPopDialogProperties
 import com.huanchengfly.tieba.post.ui.widgets.compose.dialogs.DirectionState
 import com.huanchengfly.tieba.post.ui.widgets.compose.fixedTopBarPadding
-import com.huanchengfly.tieba.post.ui.widgets.compose.hazeSource
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberSnackbarHostState
+import com.huanchengfly.tieba.post.ui.widgets.compose.preference.PreferenceGroupPosition
+import com.huanchengfly.tieba.post.ui.widgets.compose.preference.SegmentedPreference
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.useStickyHeaderWorkaround
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
@@ -164,13 +124,25 @@ import com.huanchengfly.tieba.post.utils.TiebaUtil
 import com.huanchengfly.tieba.post.utils.trace
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-
-private val ThreadToolbarContainerHeight = 48.dp
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixPinnedScrollBehavior
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixEnterAlwaysScrollBehavior
+import top.yukonga.miuix.kmp.basic.Switch as MiuixSwitch
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Copy
+import top.yukonga.miuix.kmp.icon.extended.Delete
+import top.yukonga.miuix.kmp.icon.extended.Favorites
+import top.yukonga.miuix.kmp.icon.extended.Filter
+import top.yukonga.miuix.kmp.icon.extended.Notes
+import top.yukonga.miuix.kmp.icon.extended.Reply
+import top.yukonga.miuix.kmp.icon.extended.Report
+import top.yukonga.miuix.kmp.icon.extended.Share
+import top.yukonga.miuix.kmp.icon.extended.Sort
+import top.yukonga.miuix.kmp.overlay.OverlayBottomSheet
 
 /**
- * Offset from the edge of the screen used for [ThreadFloatingToolbar].
+ * 底部余量，避免最后一条回复被右下角的 FAB 压住（FAB 60dp + 16dp 外边距 + 阴影）。
  * */
-private val ThreadToolbarScreenOffset = FloatingToolbarDefaults.ScreenOffset / 2
+private val ThreadFabClearance = 88.dp
 
 const val ThreadResultKey = "THREAD_PAGE"
 
@@ -179,37 +151,6 @@ private fun createResult(threadId: Long, like: Like?, markedPostId: Long?): Thre
         ThreadResult(threadId, liked = like.liked, likes = like.count, markedPostId = markedPostId)
     } else {
         null
-    }
-}
-
-@Composable
-private fun ToggleButton(
-    text: String,
-    checked: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    icon: ImageVector,
-) {
-    val colorScheme = MaterialTheme.colorScheme
-
-    Surface(
-        onClick = onClick,
-        modifier = modifier,
-        shape = MaterialTheme.shapes.small,
-        color = if (checked) colorScheme.secondaryContainer else colorScheme.surfaceContainerHigh,
-        contentColor = if (checked) colorScheme.onSecondaryContainer else colorScheme.onSurface,
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp, alignment = Alignment.CenterHorizontally)
-        ) {
-            Icon(imageVector = icon, contentDescription = text)
-            Text(
-                text = text,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.labelLarge
-            )
-        }
     }
 }
 
@@ -245,25 +186,14 @@ fun ThreadPage(
 
     val lazyListState = rememberLazyListState()
     val topAppBarScrollBehavior = if (useStickyHeader) {
-        TopAppBarDefaults.pinnedScrollBehavior()
+        rememberMiuixPinnedScrollBehavior()
     } else {
-        TopAppBarDefaults.enterAlwaysScrollBehavior()
+        rememberMiuixEnterAlwaysScrollBehavior()
     }
-    val toolbarScrollBehavior = FloatingToolbarDefaults.exitAlwaysScrollBehavior(exitDirection = Bottom)
 
     var showBottomSheet by rememberSaveable { mutableStateOf(false) }
-    val bottomSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val openBottomSheet: () -> Unit = {
-        coroutineScope.launch {
-            showBottomSheet = true
-            bottomSheetState.show()
-        }
-    }
-    val closeBottomSheet: () -> Unit = {
-        coroutineScope
-            .launch { bottomSheetState.hide() }
-            .invokeOnCompletion { showBottomSheet = false }
-    }
+    val openBottomSheet: () -> Unit = { showBottomSheet = true }
+    val closeBottomSheet: () -> Unit = { showBottomSheet = false }
 
     viewModel.uiEvent.collectUiEventWithLifecycle {
         val message = when (it) {
@@ -312,7 +242,7 @@ fun ThreadPage(
             else -> Unit
         }
         if (message is String) {
-            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.newestSnackbarData()?.dismiss()
             snackbarHostState.showSnackbar(message)
         }
     }
@@ -375,7 +305,7 @@ fun ThreadPage(
     }
 
     val onBackPressedCallback: () -> Unit = {
-        if (bottomSheetState.isVisible) {
+        if (showBottomSheet) {
             closeBottomSheet()
         } else {
             val lastVisiblePost = lazyListState.middleVisiblePost(state)
@@ -402,7 +332,7 @@ fun ThreadPage(
         StrongBox {
             val interceptBack by remember {
                 derivedStateOf {
-                    bottomSheetState.isVisible || collectMarkPid != lazyListState.middleVisiblePost(state)?.id
+                    showBottomSheet || collectMarkPid != lazyListState.middleVisiblePost(state)?.id
                 }
             }
             BackHandler(enabled = interceptBack, onBack = onBackPressedCallback)
@@ -416,12 +346,9 @@ fun ThreadPage(
         error = state.error,
         onReload = onRefreshClicked,
     ) {
-        BlurScaffold(
-            topHazeBlock = {
-                blurEnabled = !topAppBarScrollBehavior.isFullyCollapsed &&
-                        (lazyListState.canScrollBackward || topAppBarScrollBehavior.isOverlapping)
-            },
-            attachHazeContentState = false, // Attach manually since we're blurring the BottomSheet
+        val barBackdrop = rememberMiuixBarBackdrop()
+
+        MyScaffold(
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
@@ -435,8 +362,8 @@ fun ThreadPage(
                         BackNavigationIcon(onBackPressed = onBackPressedCallback)
                     },
                     actions = {
-                        val scrollToTopVisible by remember { // Not on top or Toolbar is collapsed
-                            derivedStateOf { lazyListState.canScrollBackward || toolbarScrollBehavior.state.collapsedFraction >= 0.9f }
+                        val scrollToTopVisible by remember { // Not on top
+                            derivedStateOf { lazyListState.canScrollBackward }
                         }
                         FadedVisibility(visible = scrollToTopVisible) {
                             ActionItem(
@@ -446,13 +373,12 @@ fun ThreadPage(
                                 if (scrollToTopVisible) {
                                     coroutineScope.launch { lazyListState.scrollToItem(0) }
                                     topAppBarScrollBehavior.state.contentOffset = 0f
-                                    toolbarScrollBehavior.state.contentOffset = 0f
-                                    toolbarScrollBehavior.state.offset = 0f
                                 }
                             }
                         }
                     },
-                    scrollBehavior = topAppBarScrollBehavior
+                    scrollBehavior = topAppBarScrollBehavior,
+                    backdrop = barBackdrop
                 ) {
                     if (useStickyHeaderWorkaround && state.thread?.replyNum != null) {
                         Container {
@@ -463,118 +389,110 @@ fun ThreadPage(
                     }
                 }
             },
-            bottomBar = {
-                Container {
-                    ThreadFloatingToolbar(
-                        modifier = Modifier
-                            .windowInsetsPadding(WindowInsets.navigationBars)
-                            .offset(y = -ThreadToolbarScreenOffset)
-                            .padding(horizontal = CardHorizontalSpacing)
-                            .animateEnterExit(
-                                animatedVisibilityScope = LocalAnimatedVisibilityScope.current,
-                                sharedTransitionScope = LocalSharedTransitionScope.current,
-                                enter = defaultVerticalEnterTransition(topToBottom = false),
-                                exit = defaultVerticalExitTransition(topToBottom = false),
-                            ),
-                        user = state.user,
-                        onClickReply = viewModel::onReplyThread.takeUnless { viewModel.hideReply },
-                        onClickMore =  openBottomSheet,
-                        onJumpPage = jumpToPageDialogState::show,
-                        like = state.thread?.like ?: LikeZero,
-                        onLiked = viewModel::onThreadLikeClicked,
-                        scrollBehavior = toolbarScrollBehavior
-                    )
-                }
+            floatingActionButton = {
+                ThreadFabMenu(
+                    // 列表在滚（拖动或惯性）时把 FAB 收起来，停下再回来：它正好压在最后一条回复上。
+                    visible = !lazyListState.isScrollInProgress,
+                    onClickReply = viewModel::onReplyThread.takeUnless { viewModel.hideReply },
+                    onClickMore = openBottomSheet,
+                    onJumpPage = jumpToPageDialogState::show,
+                    like = state.thread?.like ?: LikeZero,
+                    onLiked = viewModel::onThreadLikeClicked,
+                )
             },
-            bottomHazeBlock = { blurEnabled = false },
             snackbarHostState = snackbarHostState,
             snackbarHost = { SwipeToDismissSnackbarHost(hostState = snackbarHostState) },
             backgroundColor = Color.Transparent,
         ) { padding ->
-            val hazeState = LocalHazeState.current
             // Ignore Scaffold padding top changes if workaround enabled
-            val contentPadding = padding.fixedTopBarPadding()
+            // 底部原来由 bottomBar 的工具栏占位；换成 FAB 后 Scaffold 不再为它留高度，
+            // 这里补一段等同于 FAB 的余量，否则最后一条回复会被 FAB 压住。
+            val contentPadding = padding.fixedTopBarPadding() + PaddingValues(bottom = ThreadFabClearance)
 
-            Container(modifier = Modifier.clipToBounds()) {
-                ProvideNavigator(navigator = navigator) {
-                    ThreadContent(
-                        modifier = Modifier
-                            .hazeSource(hazeState?.state)
-                            .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection)
-                            .nestedScroll(toolbarScrollBehavior),
-                        viewModel = viewModel,
-                        lazyListState = lazyListState,
-                        contentPadding = contentPadding,
-                        topAppBarScrollBehavior = topAppBarScrollBehavior,
-                        useStickyHeader = useStickyHeader && !useStickyHeaderWorkaround
-                    )
+            // The blur capture must be FULL WIDTH.
+            //
+            // `Container` narrows its child to a centred column on wide screens (75% once the window
+            // is at least `WIDTH_DP_EXPANDED_LOWER_BOUND` — i.e. any landscape phone). The app bar's
+            // progressive-blur band, on the other hand, spans the whole screen width. Attaching the
+            // capture to `ThreadContent` therefore made the captured layer narrower than the blur
+            // band, and `progressiveTextureBlur`'s shader clamps every out-of-bounds sample to the
+            // capture's edge (`clamp(xy, 0.5, in_maxCoord)`): the column's edge colour got smeared
+            // across both side margins as flat slabs with hard vertical seams. Portrait was never
+            // affected because the fraction there is 1f and the two widths agree.
+            // The capture also needs to own the page background: on wide screens `Container` leaves
+            // the side margins empty, and a capture with nothing in them makes the blur band's tint
+            // the only thing drawn there — a tonal step against the blurred content right at the
+            // column edge. Painting the page's own surface into the capture gives the band a real
+            // background to blur in the margins, so the ramp stays continuous across the width.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .miuixLayerBackdrop(barBackdrop)
+            ) {
+                Container(modifier = Modifier.clipToBounds()) {
+                    ProvideNavigator(navigator = navigator) {
+                        ThreadContent(
+                            modifier = Modifier
+                                .nestedScroll(topAppBarScrollBehavior.nestedScrollConnection),
+                            viewModel = viewModel,
+                            lazyListState = lazyListState,
+                            contentPadding = contentPadding,
+                            topAppBarScrollBehavior = topAppBarScrollBehavior,
+                            useStickyHeader = useStickyHeader && !useStickyHeaderWorkaround
+                        )
+                    }
                 }
             }
 
-            if (showBottomSheet) {
-                ModalBottomSheet(
-                    onDismissRequest = { showBottomSheet = false },
-                    sheetState = bottomSheetState,
-                    containerColor = Color.Transparent, // Set background for blurring
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    scrimColor = Color.Transparent,
-                    dragHandle = null,
-                    contentWindowInsets = { NoWindowInsets } // Handle it inside the content for blurring
-                ) {
-                    val isMyThread by remember(state.lz) {
-                        derivedStateOf { state.user != null && state.lz?.id == state.user?.id }
-                    }
-                    val isDesc by remember { derivedStateOf { state.sortType == ThreadSortType.BY_DESC } }
+            val isMyThread by remember(state.lz) {
+                derivedStateOf { state.user != null && state.lz?.id == state.user?.id }
+            }
+            val isDesc by remember { derivedStateOf { state.sortType == ThreadSortType.BY_DESC } }
 
-                    ThreadMenu(
-                        isSeeLz = state.seeLz,
-                        isCollected = state.thread?.collected == true,
-                        isImmersiveMode = viewModel.isImmersiveMode,
-                        isDesc = isDesc,
-                        onSeeLzClick = viewModel::onSeeLzChanged,
-                        onCollectClick = {
-                            if (state.user == null) {
-                                context.toastShort(R.string.title_not_logged_in)
-                            } else if (state.thread!!.collected) {
-                                viewModel.removeFromCollections()
-                            } else {
-                                lazyListState.middleVisiblePost(state)?.let { post ->
-                                    viewModel.updateCollections(markedPost = post)
-                                }
+            OverlayBottomSheet(
+                show = showBottomSheet,
+                onDismissRequest = closeBottomSheet,
+            ) {
+                ThreadMenu(
+                    isSeeLz = state.seeLz,
+                    isCollected = state.thread?.collected == true,
+                    isImmersiveMode = viewModel.isImmersiveMode,
+                    isDesc = isDesc,
+                    onSeeLzClick = viewModel::onSeeLzChanged,
+                    onCollectClick = {
+                        if (state.user == null) {
+                            context.toastShort(R.string.title_not_logged_in)
+                        } else if (state.thread!!.collected) {
+                            viewModel.removeFromCollections()
+                        } else {
+                            lazyListState.middleVisiblePost(state)?.let { post ->
+                                viewModel.updateCollections(markedPost = post)
                             }
-                        },
-                        onImmersiveModeClick = {
-                            if (!viewModel.isImmersiveMode && !state.seeLz) {
-                                viewModel.onSeeLzChanged()
-                            }
-                            viewModel.onImmersiveModeChanged()
-                        },
-                        onDescClick = {
-                            val notDesc = state.sortType != ThreadSortType.BY_DESC
-                            val sortType = if (notDesc) ThreadSortType.BY_DESC else ThreadSortType.DEFAULT
-                            viewModel.onSortChanged(sortType)
-                        },
-                        onShareClick = viewModel::onShareThread,
-                        onCopyLinkClick = viewModel::onCopyThreadLink,
-                        onReportClick = {
-                            coroutineScope.launch {
-                                TiebaUtil.reportPost(context, navigator, state.firstPost!!.id.toString())
-                            }
-                        },
-                        onDeleteClick = viewModel::onDeleteThread.takeIf { isMyThread },
-                        requestCloseMenu = closeBottomSheet,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                start = padding.calculateStartPadding(LocalLayoutDirection.current),
-                                end = padding.calculateEndPadding(LocalLayoutDirection.current),
-                            )
-                            .withNonNull(hazeState) { Modifier.defaultHazeEffect() }
-                            .background(TiebaLiteTheme.extendedColorScheme.sheetContainerColor)
-                            .padding(top = 16.dp)
-                            .windowInsetsPadding(BottomSheetDefaults.windowInsets)
-                    )
-                }
+                        }
+                    },
+                    onImmersiveModeClick = {
+                        if (!viewModel.isImmersiveMode && !state.seeLz) {
+                            viewModel.onSeeLzChanged()
+                        }
+                        viewModel.onImmersiveModeChanged()
+                    },
+                    onDescClick = {
+                        val notDesc = state.sortType != ThreadSortType.BY_DESC
+                        val sortType = if (notDesc) ThreadSortType.BY_DESC else ThreadSortType.DEFAULT
+                        viewModel.onSortChanged(sortType)
+                    },
+                    onShareClick = viewModel::onShareThread,
+                    onCopyLinkClick = viewModel::onCopyThreadLink,
+                    onReportClick = {
+                        coroutineScope.launch {
+                            TiebaUtil.reportPost(context, navigator, state.firstPost!!.id.toString())
+                        }
+                    },
+                    onDeleteClick = viewModel::onDeleteThread.takeIf { isMyThread },
+                    closeMenu = closeBottomSheet,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
     }
@@ -632,117 +550,139 @@ private fun ThreadMenu(
     onCopyLinkClick: () -> Unit,
     onReportClick: () -> Unit,
     onDeleteClick: (() -> Unit)?,
-    requestCloseMenu: () -> Unit,
+    closeMenu: () -> Unit,
     modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .height(4.dp)
-                .fillMaxWidth(0.2f)
-                .background(color = MaterialTheme.colorScheme.onSurfaceVariant, shape = CircleShape)
-        )
-        VerticalGrid(
-            column = 2,
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            rowModifier = Modifier.height(IntrinsicSize.Min),
-            modifier = Modifier.padding(horizontal = 16.dp),
-        ) {
-            item {
-                ToggleButton(
-                    text = stringResource(id = R.string.title_see_lz),
-                    checked = isSeeLz,
-                    onClick = {
-                        requestCloseMenu()
-                        onSeeLzClick()
-                    },
-                    icon = if (isSeeLz) Icons.Rounded.Face6 else Icons.Rounded.FaceRetouchingOff,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            item {
-                ToggleButton(
-                    text = stringResource(id = if (isCollected) R.string.title_collected else R.string.title_uncollected),
-                    checked = isCollected,
-                    onClick = {
-                        requestCloseMenu()
-                        onCollectClick()
-                    },
-                    icon = if (isCollected) Icons.Rounded.Star else Icons.Rounded.StarBorder,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            item {
-                ToggleButton(
-                    text = stringResource(id = R.string.title_pure_read),
-                    checked = isImmersiveMode,
-                    onClick = {
-                        requestCloseMenu()
-                        onImmersiveModeClick()
-                    },
-                    icon = if (isImmersiveMode) Icons.AutoMirrored.Rounded.ChromeReaderMode else Icons.AutoMirrored.Outlined.ChromeReaderMode,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-            item {
-                ToggleButton(
-                    text = stringResource(id = R.string.title_sort),
-                    checked = isDesc,
-                    onClick = {
-                        requestCloseMenu()
-                        onDescClick()
-                    },
-                    icon = Icons.AutoMirrored.Rounded.Sort,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
+    Column(
+        modifier = modifier.padding(bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // 两处细节决定了「对齐」：一是所有行都用同一套 SegmentedPreference（同一行高、同一图标槽、
+        // 同一文字样式），二是去掉外面那层 Card —— PreferenceGroupPosition 自己会按组首/组尾倒圆角，
+        // 一组行读起来就是一张连续卡片。以前开关组用 miuix SwitchPreference（自己画 container，
+        // 行高 71dp、底色和 Card 不同）、操作组用 BasicComponent（行高 66dp），两套节奏放在一个
+        // 面板里，看着就是图标/文字/开关没对上。
+        Column {
+            ThreadMenuSwitch(
+                title = R.string.title_see_lz,
+                icon = MiuixIcons.Filter,
+                checked = isSeeLz,
+                position = PreferenceGroupPosition.First,
+                onClick = onSeeLzClick,
+            )
+            ThreadMenuSwitch(
+                title = if (isCollected) R.string.title_collected else R.string.title_uncollected,
+                icon = MiuixIcons.Favorites,
+                checked = isCollected,
+                position = PreferenceGroupPosition.Middle,
+                onClick = onCollectClick,
+            )
+            ThreadMenuSwitch(
+                title = R.string.title_pure_read,
+                icon = MiuixIcons.Notes,
+                checked = isImmersiveMode,
+                position = PreferenceGroupPosition.Middle,
+                onClick = onImmersiveModeClick,
+            )
+            ThreadMenuSwitch(
+                title = R.string.title_sort,
+                icon = MiuixIcons.Sort,
+                checked = isDesc,
+                position = PreferenceGroupPosition.Last,
+                onClick = onDescClick,
+            )
         }
         Column {
-            ListMenuItem(
-                icon = Icons.Rounded.Share,
-                text = stringResource(id = R.string.title_share),
+            ThreadMenuAction(
+                title = R.string.title_share,
+                icon = MiuixIcons.Share,
+                position = PreferenceGroupPosition.First,
                 onClick = {
-                    requestCloseMenu()
+                    closeMenu()
                     onShareClick()
                 },
-                modifier = Modifier.fillMaxWidth(),
             )
-            ListMenuItem(
-                icon = Icons.Rounded.ContentCopy,
-                text = stringResource(id = R.string.title_copy_link),
+            ThreadMenuAction(
+                title = R.string.title_copy_link,
+                icon = MiuixIcons.Copy,
+                position = PreferenceGroupPosition.Middle,
                 onClick = {
-                    requestCloseMenu()
+                    closeMenu()
                     onCopyLinkClick()
                 },
-                modifier = Modifier.fillMaxWidth(),
             )
-            ListMenuItem(
-                icon = Icons.Rounded.Report,
-                text = stringResource(id = R.string.title_report),
+            ThreadMenuAction(
+                title = R.string.title_report,
+                icon = MiuixIcons.Report,
+                position = if (onDeleteClick == null) {
+                    PreferenceGroupPosition.Last
+                } else {
+                    PreferenceGroupPosition.Middle
+                },
                 onClick = {
-                    requestCloseMenu()
+                    closeMenu()
                     onReportClick()
                 },
-                modifier = Modifier.fillMaxWidth(),
             )
             if (onDeleteClick != null) {
-                ListMenuItem(
-                    icon = Icons.Rounded.Delete,
-                    text = stringResource(id = R.string.title_delete),
+                ThreadMenuAction(
+                    title = R.string.title_delete,
+                    icon = MiuixIcons.Delete,
+                    position = PreferenceGroupPosition.Last,
                     onClick = {
-                        requestCloseMenu()
+                        closeMenu()
                         onDeleteClick()
                     },
-                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
     }
+}
+
+/**
+ * 开关型菜单项：右侧开关只作展示，整行都可以点。
+ *
+ * 走 [SegmentedPreference] 而不是 miuix 的 SwitchPreference，是为了和设置页共用同一套行版式 —— 图标槽、
+ * 标题基线、右侧控件位置都由同一个 BasicComponent 决定，多行并排时自然对齐。
+ */
+@Composable
+private fun ThreadMenuSwitch(
+    @StringRes title: Int,
+    icon: ImageVector,
+    checked: Boolean,
+    position: PreferenceGroupPosition,
+    onClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    SegmentedPreference(
+        title = title,
+        position = position,
+        leadingIcon = icon,
+        interactionSource = interactionSource,
+        onClick = onClick,
+        trailingContent = {
+            MiuixSwitch(
+                checked = checked,
+                enabled = true,
+                onCheckedChange = null,
+            )
+        },
+    )
+}
+
+@Composable
+private fun ThreadMenuAction(
+    @StringRes title: Int,
+    icon: ImageVector,
+    position: PreferenceGroupPosition,
+    onClick: () -> Unit,
+) {
+    SegmentedPreference(
+        title = title,
+        position = position,
+        leadingIcon = icon,
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -750,7 +690,7 @@ private fun CollectionsUpdatedSnack(
     snackbarHostState: SnackbarHostState,
     extra: ThreadFrom.Store,
     onLoadLatest: () -> Unit
-) {
+    ) {
     var showed by rememberSaveable { mutableStateOf(false) }
     if (showed) return // Display only once
 
@@ -794,7 +734,7 @@ private fun ThreadOrPostDeleteDialog(
     firstPost: PostData?,
     onConfirm: () -> Job,
     onCancel: () -> Unit
-) {
+    ) {
     val dialogState = rememberDialogState()
     LaunchedEffect(deletePost) {
         if (deletePost != null) dialogState.show()
@@ -847,136 +787,112 @@ private fun ThreadOrPostDeleteDialog(
     }
 }
 
+/**
+ * 帖子页右下角的 miuix FAB：点开是「评论 / 跳页 / 点赞 / 更多」四项。
+ *
+ * 原来底部是一条 Material3 的 FloatingToolbar 长胶囊（头像 + 回复提示 + 三个图标），
+ * 与吧内页的圆形 miuix FAB 不是同一套视觉语言，还占掉一整条列表高度。这里换成同一枚
+ * [DefaultToggleFloatingActionButton]，把长胶囊上的按钮收进它的展开菜单。
+ * */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ThreadFloatingToolbar(
+private fun ThreadFabMenu(
     modifier: Modifier = Modifier,
-    user: UserData? = null,
+    visible: Boolean = true,
     onClickReply: (() -> Unit)? = null,
     onClickMore: () -> Unit = {},
     onJumpPage: () -> Unit = {},
     like: Like = LikeZero,
     onLiked: () -> Unit = {},
-    scrollBehavior: FloatingToolbarScrollBehavior? = null,
-    shadowElevation: Dp = FloatingToolbarDefaults.ContainerExpandedElevationWithFab,
 ) {
-    val colorScheme = MaterialTheme.colorScheme
-    // Default: FloatingToolbarTokens.VibrantContainerColor
-    val toolbarContainerColor = colorScheme.primaryContainer.let {
-        if (!colorScheme.isTranslucent && !LocalUISettings.current.reduceEffect) it.copy(alpha = 0.7f) else it
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    // 展开的四项画在 FAB 之外的浮层里，不会跟着按钮一起淡出，所以一滚动就先收起菜单。
+    LaunchedEffect(visible) { if (!visible) expanded = false }
+    BackHandler(expanded) { expanded = false }
+
+    val visibility by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow),
+        label = "threadFabVisibility",
+    )
+
+    // 点击菜单项时先收起再执行动作，避免收起动画期间的重复点击。
+    val collapse: (() -> Unit) -> Unit = { action ->
+        expanded = false
+        action()
     }
 
-    ProvideContentColor(colorScheme.onPrimaryContainer) {
-        Row(
-            modifier = modifier
-                .onNotNull(scrollBehavior) {
-                    with(it) { floatingScrollBehavior() }
-                }
-                .height(ThreadToolbarContainerHeight)
-                .graphicsLayer {
-                    this.shadowElevation = shadowElevation.toPx()
-                    this.shape = CircleShape
-                    this.clip = true
-                }
-                .withNonNull(LocalHazeState.current) { Modifier.defaultHazeEffect() }
-                .background(color = toolbarContainerColor, shape = CircleShape)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val avatarContentDescription = user?.name ?: stringResource(R.string.title_not_logged_in)
-            PlainTooltipBox(
-                positionProvider = rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                contentDescription = avatarContentDescription
-            ) {
-                Avatar(
-                    modifier = Modifier.size(40.dp),
-                    data = user?.avatarUrl ?: R.drawable.ic_launcher_new_round,
-                    contentDescription = avatarContentDescription
-                )
-            }
-
-            if (onClickReply != null) {
-                Text(
-                    text = stringResource(id = R.string.tip_reply_thread),
-                    modifier = Modifier
-                        .padding(horizontal = 8.dp)
-                        .weight(1.0f)
-                        .clickableNoIndication(onClick = onClickReply),
-                    color = LocalContentColor.current.copy(alpha = 0.85f),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
-            }
-
-            ActionItem(
-                icon = Icons.Rounded.RocketLaunch,
-                contentDescription = stringResource(R.string.title_jump_page),
-                positionProvider = rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                onClick = onJumpPage,
+    FloatingActionButtonMenu(
+        // 缩到 70% 再下移一点，收起/恢复共用同一条 spring；scaffold 的槽位高度不变，
+        // 所以列表不会被这条动画推来推去。
+        modifier = modifier.graphicsLayer {
+            alpha = visibility
+            scaleX = 0.7f + 0.3f * visibility
+            scaleY = scaleX
+            translationY = (1f - visibility) * 32.dp.toPx()
+        },
+        expanded = expanded,
+        button = {
+            // 和吧内页 FAB 同一枚按钮：+ 号随展开旋转 45° 变成 ×，缩放同步脉冲。
+            DefaultToggleFloatingActionButton(
+                checked = expanded,
+                // 收起状态下按钮只剩 0 透明度，仍可能吃到手指；这一下不展开，等恢复显示再响应。
+                onCheckedChange = { if (visible) expanded = it },
+                contentDescription = stringResource(id = R.string.tip_reply_thread),
             )
-
-            LikeAction(like = like, onClick = onLiked)
-
-            ActionItem(
-                icon = Icons.Rounded.MoreVert,
-                contentDescription = stringResource(id = R.string.btn_more),
-                positionProvider = rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-                onClick = onClickMore
+        },
+    ) {
+        if (onClickReply != null) {
+            DefaultFloatingActionButtonMenuItem(
+                onClick = { collapse(onClickReply) },
+                icon = {
+                    Icon(
+                        painter = rememberVectorPainter(MiuixIcons.Reply),
+                        contentDescription = null,
+                    )
+                },
+                text = { Text(text = stringResource(id = R.string.tip_reply_thread)) },
             )
         }
-    }
-}
 
-@Composable
-private fun LikeAction(modifier: Modifier = Modifier, like: Like, onClick: () -> Unit) {
-    val contentDescription = stringResource(R.string.button_like)
-    PlainTooltipBox(
-        modifier = modifier,
-        positionProvider = rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-        contentDescription = contentDescription,
-        hasAction = true,
-    ) {
-        BadgedBox(
-            badge = {
-                if (like.count > 0) {
-                    Surface(
-                        modifier = Modifier.graphicsLayer {
-                            translationX = -size.width * if (like.count > 999) 0.45f else 0.3f
-                            translationY = size.height * 0.25f
-                        },
-                        shape = CircleShape,
-                        color = MaterialTheme.colorScheme.tertiary,
-                    ) {
-                        Text(
-                            text = remember(like.count) { like.count.getShortNumString() },
-                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Medium,
-                            autoSize = TextAutoSize.StepBased(4.sp, 9.sp),
-                            lineHeight = 10.sp,
-                            maxLines = 1
-                        )
-                    }
-                }
+        DefaultFloatingActionButtonMenuItem(
+            onClick = { collapse(onJumpPage) },
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.RocketLaunch,
+                    contentDescription = null,
+                )
             },
-        ) {
-            val animatedColor by animateColorAsState(
-                targetValue = if (like.liked) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-            )
-            IconButton(onClick = onClick) {
+            text = { Text(text = stringResource(id = R.string.title_jump_page)) },
+        )
+
+        DefaultFloatingActionButtonMenuItem(
+            onClick = { collapse(onLiked) },
+            icon = {
                 Icon(
                     imageVector = if (like.liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                    modifier = Modifier.size(24.dp),
                     contentDescription = null,
-                    tint = animatedColor
+                    // 已经赞过就用红的爱心，和列表卡片、楼中楼保持一致。
+                    tint = if (like.liked) LikeRed else LocalContentColor.current,
                 )
-            }
-        }
-    }
-}
+            },
+            text = {
+                val likeLabel = stringResource(id = R.string.button_like)
+                Text(
+                    text = if (like.count > 0) "$likeLabel " + like.count.getShortNumString() else likeLabel
+                )
+            },
+        )
 
-@Preview("LikeAction")
-@Composable
-private fun LikeActionPreview() = TiebaLiteTheme {
-    LikeAction(like = Like(liked = true, count = 999)) { }
+        DefaultFloatingActionButtonMenuItem(
+            onClick = { collapse(onClickMore) },
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.MoreVert,
+                    contentDescription = null,
+                )
+            },
+            text = { Text(text = stringResource(id = R.string.btn_more)) },
+        )
+    }
 }

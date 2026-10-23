@@ -16,12 +16,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.api.models.protos.FrsTabInfo
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
+import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.navigateDebounced
 import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.LocalNavController
 import com.huanchengfly.tieba.post.ui.page.forum.generaltablist.GeneralTabListViewModel.Companion.GeneralTabListVMFactory
 import com.huanchengfly.tieba.post.ui.page.forum.threadlist.forumThreadList
+import com.huanchengfly.tieba.post.ui.page.forum.threadlist.ForumListTopSpacing
 import com.huanchengfly.tieba.post.ui.page.main.explore.ConsumeThreadPageResult
 import com.huanchengfly.tieba.post.ui.page.main.explore.ThreadClickListeners
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
@@ -86,7 +88,15 @@ fun GeneralTabListPage(
             SwipeUpLazyLoadColumn(
                 modifier = modifier.fillMaxSize(),
                 state = listState,
-                contentPadding = contentPadding,
+                // Same card grid metrics as the 最新/精华 tab: 16dp side margins, a top inset so the
+                // first card clears the tab row, and 20dp between cards. Those three were missing
+                // here, which is why every custom tab's cards hugged the screen edge and each other.
+                contentPadding = contentPadding + PaddingValues(
+                    start = 16.dp,
+                    top = ForumListTopSpacing,
+                    end = 16.dp,
+                ),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
                 isLoading = uiState.isLoadingMore,
                 onLoad = viewModel::loadMore,
                 onLazyLoad = viewModel::loadMore.takeIf { uiState.hasMore },
@@ -97,7 +107,7 @@ fun GeneralTabListPage(
                 if (navTabInfo.sub_tab_list.isNotEmpty()) {
                     item {
                         LazyRow(
-                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 16.dp),
+                            modifier = Modifier.padding(vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(items = navTabInfo.sub_tab_list, key = { it.class_id }) { menu ->

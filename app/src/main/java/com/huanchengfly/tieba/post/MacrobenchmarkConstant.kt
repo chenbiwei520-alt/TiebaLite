@@ -10,13 +10,6 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 object MacrobenchmarkConstant {
 
     /**
-     * Intent extra: Used to override the [UISettings.reduceEffect] settings.
-     *
-     * Note: 暗黑模式下为缓解色带会禁用缩放并添加单色杂色, 在中低端设备上性能消耗会明显增加
-     * */
-    const val EXTRA_REDUCE_EFFECT = "reduce_effect"
-
-    /**
      * Intent extra: Used to control the initial welcome screen state.
      * */
     const val EXTRA_WELCOME_SETUP = "welcome"

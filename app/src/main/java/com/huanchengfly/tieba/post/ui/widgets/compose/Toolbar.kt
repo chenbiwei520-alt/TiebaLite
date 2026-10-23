@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.DropdownMenuItem
@@ -45,8 +43,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -54,6 +54,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.window.PopupPositionProvider
@@ -66,6 +67,13 @@ import com.huanchengfly.tieba.post.ui.utils.calculateNavigationType
 import com.huanchengfly.tieba.post.utils.AccountUtil
 import com.huanchengfly.tieba.post.utils.LocalAccount
 import com.huanchengfly.tieba.post.utils.StringUtil
+import top.yukonga.miuix.kmp.basic.Icon as MiuixIcon
+import top.yukonga.miuix.kmp.basic.IconButton as MiuixIconButton
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Back
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+
 
 val AppBarHeight: Dp = 56.dp
 
@@ -179,7 +187,7 @@ fun AccountNavIcon(
                     },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Rounded.Add,
+                            imageVector = MiuixIcons.Add,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.inverseOnSurface,
                             modifier = Modifier
@@ -252,8 +260,29 @@ fun ActionItem(
 fun BackNavigationIcon(modifier: Modifier = Modifier, onBackPressed: () -> Unit) {
     IconButton(onClick = onBackPressed, modifier = modifier) {
         Icon(
-            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+            imageVector = MiuixIcons.Back,
             contentDescription = stringResource(id = R.string.button_back)
+        )
+    }
+}
+
+/**
+ * HyperOS style back navigation icon: Miuix [MiuixIcons.Back] chevron, mirrored in RTL.
+ *
+ * Use this instead of [BackNavigationIcon] inside a Miuix top app bar so the bar follows the
+ * HyperOS icon language.
+ */
+@Composable
+fun MiuixBackNavigationIcon(modifier: Modifier = Modifier, onBackPressed: () -> Unit) {
+    val layoutDirection = LocalLayoutDirection.current
+    MiuixIconButton(onClick = onBackPressed, modifier = modifier) {
+        MiuixIcon(
+            imageVector = MiuixIcons.Back,
+            contentDescription = stringResource(id = R.string.button_back),
+            tint = MiuixTheme.colorScheme.onBackground,
+            modifier = Modifier.graphicsLayer {
+                if (layoutDirection == LayoutDirection.Rtl) scaleX = -1f
+            },
         )
     }
 }

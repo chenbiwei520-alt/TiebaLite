@@ -1,7 +1,6 @@
 package com.huanchengfly.tieba.post.ui.page.settings
 
 import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.animation.graphics.res.animatedVectorResource
 import androidx.compose.animation.graphics.vector.AnimatedImageVector
 import androidx.compose.foundation.Image
@@ -11,11 +10,10 @@ import androidx.compose.material.icons.automirrored.outlined.Label
 import androidx.compose.material.icons.automirrored.outlined.LabelImportant
 import androidx.compose.material.icons.automirrored.outlined.LabelOff
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.filled.TabletAndroid
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.AutoAwesomeMotion
-import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.material.icons.outlined.ColorLens
-import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.FontDownload
 import androidx.compose.material.icons.outlined.House
@@ -46,7 +44,11 @@ import kotlinx.collections.immutable.persistentMapOf
 @Composable
 fun UISettingsPage(
     settings: Settings<UISettings>,
-    navigator: NavController
+    navigator: NavController,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
+    /** 面板模式下由外层接管子页（平板两栏不跳转）；为 null 时保持原来的页面跳转。 */
+    onOpenAppFont: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val toyFansIcon = AnimatedImageVector.animatedVectorResource(R.drawable.ic_animated_toy_fans)
@@ -54,6 +56,7 @@ fun UISettingsPage(
     SettingsScaffold(
         titleRes = R.string.title_settings_custom,
         onBack = navigator::navigateUp,
+        paneMode = paneMode,
         settings = settings,
         initialValue = UISettings(),
     ) {
@@ -62,14 +65,10 @@ fun UISettingsPage(
                 title = R.string.title_custom_font_size,
                 leadingIcon = Icons.Outlined.FontDownload,
                 trailingIcon = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-                onClick = {
+                onClick = onOpenAppFont ?: {
                     navigator.navigate(AppFont)
                 }
             )
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                reduceEffectPreference()
-            }
 
             toggleablePreference(
                 property = UISettings::reduceMotion,
@@ -78,16 +77,8 @@ fun UISettingsPage(
             )
         }
 
-        group(title = R.string.settings_group_dark_mode) {
+        group(title = R.string.settings_group_theme) {
             darkThemeModePreference()
-
-            toggleablePreference(
-                property = UISettings::darkAmoled,
-                title = R.string.title_settings_dark_amoled,
-                summary = R.string.summary_dark_amoled,
-                enabled = currentPreference.darkPreference != DarkPreference.DISABLED,
-                leadingIcon = Icons.Outlined.Contrast
-            )
 
             darkImagePreference()
         }
@@ -141,6 +132,18 @@ fun UISettingsPage(
         }
 
         group(title = R.string.settings_group_main_page) {
+            listPref(
+                property = UISettings::defaultStartPage,
+                title = R.string.settings_default_start,
+                leadingIcon = Icons.Default.TabletAndroid,
+                options = persistentMapOf(
+                    0 to R.string.title_main,
+                    1 to R.string.title_explore,
+                    2 to R.string.title_notifications,
+                    3 to R.string.title_user,
+                ),
+            )
+
             toggleablePreference(
                 property = UISettings::bottomNavFloating,
                 title = R.string.settings_nav_floating,
@@ -196,12 +199,13 @@ fun SettingsSegmentedPrefsScope<UISettings>.darkImagePreference() {
 fun SettingsSegmentedPrefsScope<UISettings>.darkThemeModePreference() {
     listPref(
         property = UISettings::darkPreference,
-        title = R.string.title_settings_night_mode,
+        title = R.string.title_theme_mode,
         leadingIcon = Icons.Outlined.DarkMode,
+        // Ordered lightest -> darkest, matching the HyperOS theme mode picker
         options = persistentMapOf(
-            DarkPreference.ALWAYS to R.string.summary_night_mode_always,
-            DarkPreference.DISABLED to R.string.summary_night_mode_disabled,
-            DarkPreference.FOLLOW_SYSTEM to R.string.summary_night_mode_system
+            DarkPreference.FOLLOW_SYSTEM to R.string.summary_theme_mode_system,
+            DarkPreference.DISABLED to R.string.summary_theme_mode_light,
+            DarkPreference.ALWAYS to R.string.summary_theme_mode_dark,
         ),
         onValueChanged = {
             ThemeUtil.overrideDarkMode(darkMode = null) // Clear user override
@@ -221,11 +225,3 @@ fun SettingsSegmentedPrefsScope<UISettings>.forumListPreference() {
     )
 }
 
-@RequiresApi(Build.VERSION_CODES.S)
-fun SettingsSegmentedPrefsScope<UISettings>.reduceEffectPreference() {
-    toggleablePreference(
-        property = UISettings::reduceEffect,
-        title = R.string.title_reduce_effect,
-        leadingIcon = Icons.Outlined.BlurOn,
-    )
-}

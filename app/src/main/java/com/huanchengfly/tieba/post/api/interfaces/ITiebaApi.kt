@@ -4,6 +4,7 @@ import com.huanchengfly.tieba.post.api.models.*
 import com.huanchengfly.tieba.post.api.models.protos.GeneralTabList.GeneralTabListResponse
 import com.huanchengfly.tieba.post.api.models.protos.addPost.AddPostResponse
 import com.huanchengfly.tieba.post.api.models.protos.addPollPost.AddPollPostReponse
+import com.huanchengfly.tieba.post.api.models.protos.addThread.AddThreadResponse
 import com.huanchengfly.tieba.post.api.models.protos.forumGuide.ForumGuideResponse
 import com.huanchengfly.tieba.post.api.models.protos.forumRecommend.ForumRecommendResponse
 import com.huanchengfly.tieba.post.api.models.protos.forumRuleDetail.ForumRuleDetailResponse
@@ -870,6 +871,19 @@ interface ITiebaApi {
      */
     fun getAllFollowFlow(uid: Long? = null): Flow<FollowListBean>
 
+    /**
+     * 粉丝列表（客户端接口）
+     *
+     * **需登录**
+     *
+     * @param page 分页页码
+     * @param uid 用户 uid，留空表示当前登录用户
+     */
+    fun fansListFlow(
+        page: Int = 1,
+        uid: Long? = null,
+    ): Flow<FansListBean>
+
     fun hotMessageList(): Call<HotMessageListBean>
 
     /**
@@ -1544,7 +1558,7 @@ interface ITiebaApi {
         title: String,
         isHide: Int,
         isTitle: Int,
-    ): Flow<AddThreadBean>
+    ): Flow<AddThreadResponse>
 
     /**
      * 禁止用户互动（转、评、赞踩、@）

@@ -23,8 +23,6 @@ import com.huanchengfly.tieba.post.ui.page.main.explore.ExplorePage
 import com.huanchengfly.tieba.post.ui.page.main.home.HomePage
 import com.huanchengfly.tieba.post.ui.page.main.notifications.NotificationsPage
 import com.huanchengfly.tieba.post.ui.page.main.user.UserPage
-import com.huanchengfly.tieba.post.ui.widgets.compose.LocalHazeState
-import com.huanchengfly.tieba.post.ui.widgets.compose.TbHazeState
 import com.huanchengfly.tieba.post.utils.LocalAccount
 import kotlinx.serialization.Serializable
 import kotlin.reflect.KType
@@ -45,15 +43,27 @@ sealed interface MainDestination {
     object User: MainDestination
 }
 
+/**
+ * Bottom-navigation order of [MainDestination].
+ *
+ * The 「启动首选页」preference stores an index into this list rather than a destination object, so the
+ * stored value survives renames. [MainDestination] is a sealed interface of objects, so there is no
+ * `entries` to read the order from.
+ * */
+val MainDestinationOrder: List<MainDestination> = listOf(
+    MainDestination.Home,
+    MainDestination.Explore,
+    MainDestination.Notification,
+    MainDestination.User,
+)
+
 fun NavGraphBuilder.mainNavGraph(
     navController: NavController,
     nestedNavController: NavController,
-    hazeState: TbHazeState? = null,
     parentAnimatedVisibilityScope: AnimatedVisibilityScope? = null,
     parentSharedTransitionScope: SharedTransitionScope? = null,
 ) {
     animatedMainComposable<MainDestination.Home>(
-        hazeState = hazeState,
         navController = navController,
         parentAnimatedVisibilityScope = parentAnimatedVisibilityScope,
         parentSharedTransitionScope = parentSharedTransitionScope,
@@ -72,7 +82,6 @@ fun NavGraphBuilder.mainNavGraph(
     }
 
     animatedMainComposable<MainDestination.Explore>(
-        hazeState = hazeState,
         navController = navController,
         parentAnimatedVisibilityScope = parentAnimatedVisibilityScope,
         parentSharedTransitionScope = parentSharedTransitionScope,
@@ -87,7 +96,11 @@ fun NavGraphBuilder.mainNavGraph(
         NotificationsPage(fromHome = true, navigator = navController)
     }
 
-    composable<MainDestination.User> {
+    animatedMainComposable<MainDestination.User>(
+        navController = navController,
+        parentAnimatedVisibilityScope = parentAnimatedVisibilityScope,
+        parentSharedTransitionScope = parentSharedTransitionScope,
+    ) {
         ProvideNavigator(navigator = navController) {
             UserPage()
         }
@@ -97,7 +110,6 @@ fun NavGraphBuilder.mainNavGraph(
 private inline fun <reified T : Any> NavGraphBuilder.animatedMainComposable(
     typeMap: Map<KType, @JvmSuppressWildcards NavType<*>> = emptyMap(),
     deepLinks: List<NavDeepLink> = emptyList(),
-    hazeState: TbHazeState?,
     navController: NavController,
     parentAnimatedVisibilityScope: AnimatedVisibilityScope?,
     parentSharedTransitionScope: SharedTransitionScope?,
@@ -110,7 +122,6 @@ private inline fun <reified T : Any> NavGraphBuilder.animatedMainComposable(
             typeMap
         ) {
             CompositionLocalProvider(
-                LocalHazeState provides hazeState,
                 LocalNavController provides navController,
                 LocalAnimatedVisibilityScope provides parentAnimatedVisibilityScope,
                 LocalSharedTransitionScope provides parentSharedTransitionScope,

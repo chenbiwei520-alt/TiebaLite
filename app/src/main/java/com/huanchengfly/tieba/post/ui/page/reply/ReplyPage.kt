@@ -43,16 +43,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.outlined.EmojiEmotions
 import androidx.compose.material.icons.outlined.InsertPhoto
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.squircle.squircleBackground
+import top.yukonga.miuix.kmp.squircle.squircleClip
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -136,6 +135,10 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Close
+import top.yukonga.miuix.kmp.icon.extended.Send
 
 private enum class ReplyPanelType {
     NONE,
@@ -331,12 +334,12 @@ private fun ReplyPageContent(
             Text(
                 text = topTitle,
                 modifier = Modifier.weight(1f),
-                fontWeight = FontWeight.Bold
+                style = MiuixTheme.textStyles.title4,
             )
             Text(
                 text = inputLength.toString(),
-                color = colors.onSurfaceVariant,
-                style = MaterialTheme.typography.labelMedium,
+                color = MiuixTheme.colorScheme.onBackgroundVariant,
+                style = MiuixTheme.textStyles.footnote2,
             )
         }
 
@@ -344,7 +347,15 @@ private fun ReplyPageContent(
             ThreadTitleTextField(value = threadTitle, onValueChange = setThreadTitle)
         }
 
-        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+        // MIUI separator: a hairline in outlineVariant rather than Material's full-strength divider,
+        // which split the sheet into hard bands. The input surface below now provides separation too.
+        Box(
+            modifier = Modifier
+                .padding(horizontal = 16.dp)
+                .fillMaxWidth()
+                .height(Dp.Hairline)
+                .background(MiuixTheme.colorScheme.onBackgroundVariant.copy(alpha = 0.15f))
+        )
         Box(
             modifier = Modifier
                 .wrapContentHeight()
@@ -354,8 +365,17 @@ private fun ReplyPageContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
+                    // MIUI input surface: layout_reply_edit_text sets the EditText's own background
+                    // to transparent, so this squircle shows through and reproduces the rounded field
+                    // of the MIUI reference dialog.
+                    .squircleBackground(
+                        color = MiuixTheme.colorScheme.surfaceContainer,
+                        cornerRadius = Sizes.CornerRadius,
+                    )
+                    .squircleClip(Sizes.CornerRadius)
                     .requiredHeightIn(min = minHeight, max = maxHeight)
                     .verticalScroll(textFieldScrollState)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
             ) {
                 AndroidView(
                     factory = { ctx ->
@@ -401,25 +421,6 @@ private fun ReplyPageContent(
                 )
             }
 
-//            b/135556699 Support for text editing with AnnotatedString (multi style text editing / sometimes rich text editing)
-//
-//            BaseTextField(
-//                value = text,
-//                onValueChange = { text = it },
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(16.dp)
-//                    .requiredHeightIn(min = minResult, max = maxResult)
-//                    .focusRequester(focusRequester)
-//                    .verticalScroll(textFieldScrollState)
-//                    .onFocusChanged {
-//                        Log.i("ReplyPage", "onFocusChanged: $it")
-//                        if (it.hasFocus) {
-//                            switchToKeyboard(NONE)
-//                        }
-//                    },
-//                placeholder = { Text(text = stringResource(id = R.string.tip_reply)) },
-//            )
         }
 
         ImeActionRow(
@@ -585,22 +586,11 @@ private fun ImeActionRow(
                 }
             }
         }
-//            IconButton(
-//                onClick = { switchToPanel(VOICE) },
-//                modifier = Modifier.size(24.dp)
-//            ) {
-//                Icon(
-//                    imageVector = Icons.Outlined.KeyboardVoice,
-//                    contentDescription = stringResource(id = R.string.insert_voice),
-//                    modifier = Modifier.size(24.dp)
-//                )
-//            }
         Spacer(modifier = Modifier.weight(1f))
         if (isReplying()) {
             CircularProgressIndicator(
-                modifier = Modifier.size(Sizes.Tiny),
-                strokeWidth = 2.dp,
-                color = colorScheme.primary
+                size = Sizes.Tiny,
+                strokeWidth = 2.dp
             )
         } else {
             IconButton(
@@ -609,7 +599,7 @@ private fun ImeActionRow(
                 modifier = Modifier.size(Sizes.Tiny)
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.Send,
+                    imageVector = MiuixIcons.Send,
                     contentDescription = stringResource(id = R.string.send_reply)
                 )
             }
@@ -671,9 +661,6 @@ private fun ImagePanel(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-//            item {
-//                Spacer(modifier = Modifier.width(16.dp))
-//            }
             itemsIndexed(selectedImages) { index, imageUri ->
                 Box(
                     modifier = Modifier.fillMaxHeight().aspectRatio(1f),
@@ -691,7 +678,7 @@ private fun ImagePanel(
                         colors = iconButtonColors,
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Close,
+                            imageVector = MiuixIcons.Close,
                             contentDescription = stringResource(id = R.string.desc_remove_image)
                         )
                     }
@@ -708,7 +695,7 @@ private fun ImagePanel(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Add,
+                            imageVector = MiuixIcons.Add,
                             contentDescription = stringResource(id = R.string.desc_add_image),
                             modifier = Modifier.minimumInteractiveComponentSize(),
                             tint = MaterialTheme.colorScheme.onSecondary
@@ -796,7 +783,10 @@ private fun ReplyWarningDialog(
         buttons = {
             Column(
                 modifier = Modifier.padding(horizontal = DefaultDialogContentPadding),
-                verticalArrangement = Arrangement.spacedBy(2.dp)
+                // 2.dp left the pills visually touching. MIUI separates stacked dialog actions by
+                // roughly 12–16.dp; 12.dp matches the reference SuperDialog and keeps each button's
+                // 40.dp touch target clearly bounded.
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 DialogPositiveButton(
                     modifier = Modifier.fillMaxWidth(),

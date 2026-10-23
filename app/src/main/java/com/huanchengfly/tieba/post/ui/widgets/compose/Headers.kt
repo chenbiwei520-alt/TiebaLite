@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.accompanist.placeholder.PlaceholderHighlight
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.huanchengfly.tieba.post.LocalHabitSettings
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.theme.ProvideContentColorTextStyle
@@ -96,7 +97,7 @@ fun UserHeader(
 
             if (desc != null) {
                 ProvideContentColorTextStyle(
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    contentColor = MiuixTheme.colorScheme.onBackgroundVariant,
                     textStyle = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                     content = desc
                 )
@@ -252,8 +253,8 @@ private fun SharedTransitionUserName(
         if (!bawuType.isNullOrBlank()) {
             TextChip(
                 text = bawuType,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                backgroundColor = MaterialTheme.colorScheme.primaryContainer
+                color = MiuixTheme.colorScheme.onSecondaryContainer,
+                backgroundColor = MiuixTheme.colorScheme.secondaryContainer
             )
         }
     }
@@ -272,8 +273,8 @@ private fun TextChip(
     text: String,
     modifier: Modifier = Modifier,
     fontSize: TextUnit = TextUnit.Unspecified,
-    backgroundColor: Color = MaterialTheme.colorScheme.tertiary,
-    color: Color = MaterialTheme.colorScheme.onTertiary,
+    backgroundColor: Color = MiuixTheme.colorScheme.primary,
+    color: Color = MiuixTheme.colorScheme.onPrimary,
 ) = Text(
     text = text,
     modifier = modifier

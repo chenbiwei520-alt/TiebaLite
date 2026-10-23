@@ -19,7 +19,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CopyAll
-import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
@@ -52,6 +51,8 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.ExtendedFabHeight
 import com.huanchengfly.tieba.post.ui.widgets.compose.PlainTooltipBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.ToolbarToFabGap
 import com.huanchengfly.tieba.post.utils.TiebaUtil
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Share
 
 @Composable
 fun CopyTextDialogPage(
@@ -145,7 +146,7 @@ fun CopyTextDialogPage(
                         contentColor = colors.fabContentColor,
                         elevation = fabElevation,
                     ) {
-                        Icon(Icons.Rounded.Share, contentDescription = shareContentDescription)
+                        Icon(MiuixIcons.Share, contentDescription = shareContentDescription)
                     }
                 }
             }

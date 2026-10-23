@@ -2,16 +2,17 @@ package com.huanchengfly.tieba.post.ui.page.forum.rule
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -19,11 +20,15 @@ import androidx.navigation.NavController
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.navigateDebounced
+import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
+import com.huanchengfly.tieba.post.ui.miuix.LocalLiquidGlassBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixPinnedScrollBehavior
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
+import com.huanchengfly.tieba.post.ui.widgets.compose.CenterAlignedTopAppBar
+import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.SharedTransitionUserHeader
-import com.huanchengfly.tieba.post.ui.widgets.compose.TitleCentredToolbar
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 
 @Composable
@@ -39,6 +44,8 @@ fun ForumRuleDetailPage(
         prop1 = ForumRuleDetailUiState::error,
         initial = null
     )
+    // Pinned: the bar stays put and the list scrolls underneath, which is what feeds the blur.
+    val scrollBehavior = rememberMiuixPinnedScrollBehavior()
 
     ProvideNavigator(navigator = navigator) {
         StateScreen(
@@ -46,25 +53,49 @@ fun ForumRuleDetailPage(
             error = error,
             onReload = viewModel::reload,
         ) {
-            Scaffold(
+            MyScaffold(
                 topBar = {
-                    TitleCentredToolbar(
-                        title = stringResource(id = R.string.title_forum_rule),
+                    // `CenterAlignedTopAppBar` (→ `TopAppBar`) owns the blur: it makes the bar
+                    // itself transparent when a backdrop is supplied and sizes the blur ramp to the
+                    // bar's real height. Doing it by hand with an opaque toolbar hides the blur
+                    // completely, because the bar paints over it.
+                    CenterAlignedTopAppBar(
+                        titleRes = R.string.title_forum_rule,
                         navigationIcon = {
                             BackNavigationIcon(onBackPressed = navigator::navigateUp)
-                        }
+                        },
+                        scrollBehavior = scrollBehavior,
+                        backdrop = LocalLiquidGlassBackdrop.current,
                     )
                 }
             ) { contentPadding ->
                 val state by viewModel.uiState.collectAsStateWithLifecycle()
-                val forumRule = state.data ?: return@Scaffold
+                val forumRule = state.data ?: return@MyScaffold
 
                 val ruleTitleStyle = MaterialTheme.typography.titleMedium
                 val ruleContentStyle = MaterialTheme.typography.bodyLarge
 
                 LazyColumn(
-                    modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
-                    contentPadding = contentPadding,
+                    modifier = Modifier
+                        // No `miuixLayerBackdrop` here: `MyScaffold` already wraps this page's
+                        // whole content in `layerBackdrop(glassBackdrop)`, so adding a second
+                        // capture of the SAME backdrop on a descendant nests two `GraphicsLayer
+                        // .record()` calls on one graphics layer. `record()` is not reentrant —
+                        // the inner one throws "Recording currently in progress" from
+                        // `RenderNode.beginRecording`, crashing on first draw.
+                        //
+                        // `fillMaxSize` matters for the blur: the list has to span the whole screen
+                        // so its items scroll *under* the transparent bar. The margins go in
+                        // `contentPadding` instead of a `padding` modifier for the same reason —
+                        // a padding modifier would shrink the viewport and leave the strip behind
+                        // the bar permanently empty.
+                        .fillMaxSize()
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    contentPadding = contentPadding + PaddingValues(
+                        start = 16.dp,
+                        top = 12.dp,
+                        end = 16.dp,
+                    ),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     item {

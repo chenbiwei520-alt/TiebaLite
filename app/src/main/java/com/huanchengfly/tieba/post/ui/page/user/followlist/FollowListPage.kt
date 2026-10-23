@@ -14,12 +14,12 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.TipsAndUpdates
 import androidx.compose.material.icons.rounded.VerticalAlignTop
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
@@ -28,9 +28,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedListItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,6 +46,7 @@ import androidx.compose.ui.util.fastForEach
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.CommonUiEvent
 import com.huanchengfly.tieba.post.arch.collectUiEventWithLifecycle
@@ -79,6 +77,11 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.stickyHeaderBackground
 import com.huanchengfly.tieba.post.utils.LocalAccount
 import kotlin.random.Random
+import androidx.compose.material3.TopAppBarDefaults
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixPinnedScrollBehavior
+import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBar
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Refresh
 
 private val FollowListFilter.contentDescription: Int
     get() = when (this) {
@@ -98,7 +101,7 @@ fun FollowListPage(
 ) {
     val showActions = (uid == 0L || uid == LocalAccount.current?.uid)
     val lazyListState = rememberLazyListState()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = rememberMiuixPinnedScrollBehavior()
     val snackbarHostState = rememberSnackbarHostState()
 
     viewModel.uiEvent.collectUiEventWithLifecycle {
@@ -112,7 +115,7 @@ fun FollowListPage(
             else -> Unit
         }
         if (uiMessage is String) {
-            snackbarHostState.currentSnackbarData?.dismiss()
+            snackbarHostState.newestSnackbarData()?.dismiss()
             snackbarHostState.showSnackbar(uiMessage)
         }
     }
@@ -136,7 +139,7 @@ fun FollowListPage(
                         menuContent = {
                             TextIconMenuItem(
                                 text = stringResource(R.string.btn_refresh),
-                                icon = Icons.Rounded.Refresh
+                                icon = MiuixIcons.Refresh
                             ) {
                                 lazyListState.requestScrollToItem(0)
                                 scrollBehavior.state.contentOffset = 0f
@@ -153,6 +156,8 @@ fun FollowListPage(
                             )
                         },
                         triggerShape = CircleShape,
+                        triggerIcon = Icons.Rounded.MoreVert,
+                        triggerContentDescription = stringResource(id = R.string.btn_more),
                         content = MoreMenuItem,
                     )
                 },
@@ -176,7 +181,7 @@ fun FollowListPage(
             FollowList(
                 data = filteredUsers,
                 tipsText = uiState.tipsText,
-                totalFollowNum = uiState.totalFollowNum,
+                countText = stringResource(id = R.string.text_follow_list_count, uiState.totalFollowNum),
                 modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
                 contentPadding = if (showActions) {
                     contentPaddings + PaddingValues(bottom = 72.dp) // Bottom padding for FollowListFilter
@@ -250,14 +255,14 @@ private fun FollowListFilter(
 }
 
 @Composable
-private fun FollowList(
+internal fun FollowList(
     data: List<FollowUser>,
     tipsText: String?,
-    totalFollowNum: Int,
+    countText: String,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues.Zero,
     state: LazyListState = rememberLazyListState(),
-    scrollBehavior: TopAppBarScrollBehavior? = null,
+    scrollBehavior: ScrollBehavior? = null,
     isLoading: () -> Boolean = { false },
     onLazyLoad: (() -> Unit)? = null,
     onClick: (FollowUser) -> Unit = {},
@@ -305,7 +310,7 @@ private fun FollowList(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
             ) {
                 Text(
-                    text = stringResource(id = R.string.text_follow_list_count, totalFollowNum),
+                    text = countText,
                     color = MaterialTheme.colorScheme.tertiary,
                     style = MaterialTheme.typography.labelLarge
                 )
@@ -355,7 +360,7 @@ private fun FollowList(
 }
 
 @Composable
-private fun FollowListFollowButton(
+internal fun FollowListFollowButton(
     user: FollowUser,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
@@ -384,7 +389,7 @@ private fun FollowListFollowButton(
                 style = MaterialTheme.typography.labelMedium,
             )
         } else {
-            CircularProgressIndicator(modifier = Modifier.size(Sizes.Tiny))
+            CircularProgressIndicator(size = Sizes.Tiny)
         }
     }
 }
@@ -434,7 +439,7 @@ private fun FollowListPreview() = TiebaLiteTheme {
         FollowList(
             data = users,
             tipsText = "仅展示登录的用户和正常账号",
-            totalFollowNum = users.size,
+            countText = "共关注${users.size}个吧友",
             onFollowActionClicked = {},
         )
     }

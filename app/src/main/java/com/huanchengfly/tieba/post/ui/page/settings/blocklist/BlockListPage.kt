@@ -22,24 +22,18 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Notes
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonMenu
-import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.ListItemElevation
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.material3.SegmentedListItem
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
@@ -55,7 +49,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -72,23 +65,30 @@ import com.huanchengfly.tieba.post.models.database.BlockKeyword
 import com.huanchengfly.tieba.post.models.database.BlockUser
 import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
+import top.yukonga.miuix.kmp.basic.FloatingActionButtonDefaults
+import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
 import com.huanchengfly.tieba.post.ui.common.FadedVisibility
 import com.huanchengfly.tieba.post.ui.icons.RegularExpression
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.CenterAlignedTopAppBar
+import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultFloatingActionButtonMenuItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultToggleFloatingActionButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.DeleteIconButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.DialogState
-import com.huanchengfly.tieba.post.ui.widgets.compose.ExtendedFabHeight
-import com.huanchengfly.tieba.post.ui.widgets.compose.FancyAnimatedIndicatorWithModifier
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.PlainTooltipBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.PromptDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.preference.SegmentedListItemColors
+import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import kotlinx.coroutines.launch
 import kotlin.random.Random
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixPinnedScrollBehavior
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.Notes
 
 private sealed class BlockType(val title: Int, val contentDescription: Int) {
     object Blacklist: BlockType(R.string.title_black_list, R.string.title_add_black)
@@ -167,6 +167,8 @@ private fun ForumBlockDialog(
 @Composable
 fun ForumBlockListPage(
     onBack: () -> Unit,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
     viewModel: ForumBlockListViewModel = hiltViewModel(),
 ) {
     val blackList by viewModel.blackList.collectAsStateWithLifecycle()
@@ -188,6 +190,7 @@ fun ForumBlockListPage(
         blackList = { blackList },
         whitelist = { null },
         onBack = onBack,
+        paneMode = paneMode,
         onSelectItems = viewModel::delete,
         isUpdating = { isUpdating },
         itemKeyProvider = { _, keyword -> keyword },
@@ -203,7 +206,7 @@ fun ForumBlockListPage(
                         setBlockForum(blockType) // Launch PromptDialog
                     }
                 ) {
-                    Icon(imageVector = Icons.Rounded.Add, contentDescription = null)
+                    Icon(imageVector = MiuixIcons.Add, contentDescription = null)
                 }
             }
         }
@@ -215,6 +218,8 @@ fun ForumBlockListPage(
 @Composable
 fun KeywordBlockListPage(
     onBack: () -> Unit,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
     viewModel: KeywordBlockListViewModel = hiltViewModel(),
 ) {
     val (addKeywordOpt, setKeywordOpt) = remember { mutableStateOf<BlockKeywordOption?>(null) }
@@ -240,6 +245,7 @@ fun KeywordBlockListPage(
         blackList = { blackList },
         whitelist = { whitelist },
         onBack = onBack,
+        paneMode = paneMode,
         onSelectItems = viewModel::delete,
         isUpdating = { isUpdating },
         floatingActionButton = { visible, blockType ->
@@ -257,6 +263,8 @@ fun KeywordBlockListPage(
 @Composable
 fun UserBlockListPage(
     onBack: () -> Unit,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
     viewModel: UserBlockListViewModel = hiltViewModel(),
 ) {
     val blackList by viewModel.blackList.collectAsStateWithLifecycle()
@@ -268,6 +276,7 @@ fun UserBlockListPage(
         blackList = { blackList },
         whitelist = { whitelist },
         onBack = onBack,
+        paneMode = paneMode,
         onSelectItems = viewModel::delete,
         isUpdating = { isUpdating },
         itemKeyProvider = { _, item -> item.uid },
@@ -283,6 +292,8 @@ private fun <T> BlockListScaffold(
     blackList: () -> List<T>?,
     whitelist: () -> List<T>?,
     onBack: () -> Unit = {},
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
     onSelectItems: (List<T>) -> Unit = {},
     isUpdating: () -> Boolean = { false },
     floatingActionButton: (@Composable (visible: Boolean, BlockType) -> Unit)? = null,
@@ -290,12 +301,12 @@ private fun <T> BlockListScaffold(
     itemContent: @Composable (item: T) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+    val scrollBehavior = rememberMiuixPinnedScrollBehavior()
     val pagerState = rememberPagerState { pages.size }
 
     val listItemColors = SegmentedListItemColors
     val listItemElevation = ListItemElevation(Dp.Hairline, Dp.Hairline)
-    val listContentPadding = PaddingValues(start = 8.dp, top = 16.dp, end = 8.dp, bottom = 48.dp + ExtendedFabHeight)
+    val listContentPadding = PaddingValues(start = 8.dp, top = 16.dp, end = 8.dp, bottom = 48.dp + FloatingActionButtonDefaults.MinHeight)
 
     val selectedItems = remember { mutableStateSetOf<T>() }
     var selectMode by remember { mutableStateOf(false) }
@@ -303,9 +314,12 @@ private fun <T> BlockListScaffold(
         selectMode = false
         selectedItems.clear()
     }
+    // Feeds the liquid glass fill of the tab row's pills
+    val tabBackdrop = rememberMiuixBarBackdrop()
 
     MyScaffold(
         topBar = {
+            if (paneMode) return@MyScaffold
             CenterAlignedTopAppBar(
                 titleRes = title,
                 navigationIcon = {
@@ -320,28 +334,19 @@ private fun <T> BlockListScaffold(
                         }
                     }
                 },
-                scrollBehavior = scrollBehavior
+                scrollBehavior = scrollBehavior,
+                backdrop = tabBackdrop
             ) {
                 if (pagerState.pageCount <= 1) return@CenterAlignedTopAppBar
                 AnimatedVisibility(visible = !selectMode) {
-                    PrimaryTabRow(
+                    MiuixTabRow(
+                        tabs = pages.map { stringResource(id = it.title) },
                         selectedTabIndex = pagerState.currentPage,
-                        indicator = {
-                            FancyAnimatedIndicatorWithModifier(pagerState.currentPage)
+                        onTabSelected = { i ->
+                            coroutineScope.launch { pagerState.animateScrollToPage(i) }
                         },
-                        containerColor = Color.Transparent,
-                    ) {
-                        pages.fastForEachIndexed { i, page ->
-                            Tab(
-                                selected = pagerState.currentPage == i,
-                                onClick = {
-                                    coroutineScope.launch { pagerState.animateScrollToPage(i) }
-                                },
-                                text = { Text(text = stringResource(id = page.title)) },
-                                unselectedContentColor = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
+                        backdrop = tabBackdrop,
+                    )
                 }
             }
         },
@@ -356,6 +361,7 @@ private fun <T> BlockListScaffold(
     ) { contentPadding ->
         HorizontalPager(
             state = pagerState,
+            modifier = Modifier.miuixLayerBackdrop(tabBackdrop),
             key = { it },
             userScrollEnabled = !selectMode
         ) { index ->
@@ -421,7 +427,7 @@ private fun BlockFloatingActionButtonMenu(
 
     val items = remember {
         listOf(
-            Icons.AutoMirrored.Rounded.Notes to context.getString(R.string.button_add_keyword),
+            MiuixIcons.Notes to context.getString(R.string.button_add_keyword),
             Icons.Rounded.RegularExpression to context.getString(R.string.button_add_regex)
         )
     }
@@ -445,7 +451,7 @@ private fun BlockFloatingActionButtonMenu(
         ) {
             items.fastForEachIndexed { i, (icon, menuText) ->
                 val isRegex = i != 0
-                FloatingActionButtonMenuItem(
+                DefaultFloatingActionButtonMenuItem(
                     onClick = {
                         fabMenuExpanded = false
                         onAdd(isRegex)
@@ -529,7 +535,7 @@ private fun KeywordItem(modifier: Modifier = Modifier, keyword: String, isRegex:
             if (isRegex) {
                 Icon(imageVector = Icons.Rounded.RegularExpression, contentDescription = null)
             } else {
-                Icon(imageVector = Icons.AutoMirrored.Rounded.Notes, contentDescription = null)
+                Icon(imageVector = MiuixIcons.Notes, contentDescription = null)
             }
         },
     )

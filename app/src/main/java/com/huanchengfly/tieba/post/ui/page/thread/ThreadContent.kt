@@ -26,9 +26,7 @@ import androidx.compose.material.icons.rounded.AlignVerticalTop
 import androidx.compose.material.icons.rounded.Poll
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.sharp.AccessTime
-import androidx.compose.material.icons.sharp.Check
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
@@ -36,7 +34,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
@@ -60,15 +57,20 @@ import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.util.fastMap
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.huanchengfly.tieba.post.arch.GlobalEvent
+import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.MacrobenchmarkConstant.testColumn
 import com.huanchengfly.tieba.post.PaddingNone
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.PollOption
 import com.huanchengfly.tieba.post.navigateDebounced
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
+import com.huanchengfly.tieba.post.ui.widgets.compose.PbContentRenderList
 import com.huanchengfly.tieba.post.ui.widgets.compose.PbContentText
 import com.huanchengfly.tieba.post.ui.common.theme.compose.clickableNoIndication
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onNotNull
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
 import com.huanchengfly.tieba.post.ui.models.PostData
 import com.huanchengfly.tieba.post.ui.models.SubPostItemData
 import com.huanchengfly.tieba.post.ui.models.ThreadPollInfo
@@ -79,7 +81,8 @@ import com.huanchengfly.tieba.post.ui.page.LocalNavController
 import com.huanchengfly.tieba.post.ui.page.subposts.PostLikeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
-import com.huanchengfly.tieba.post.ui.widgets.compose.Card
+import com.huanchengfly.tieba.post.plus
+import com.huanchengfly.tieba.post.ui.widgets.compose.ListItemCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
@@ -99,6 +102,12 @@ import com.huanchengfly.tieba.post.utils.TiebaUtil
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import kotlin.time.Instant
+import top.yukonga.miuix.kmp.basic.Card as MiuixCard
+import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.ScrollBehavior
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.basic.Check
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 sealed class Type(val key: String) {
     object FirstPost: Type("FirstPost")
@@ -149,7 +158,7 @@ private fun PollOption(
     ) {
         AnimatedVisibility(polled) {
             Icon(
-                imageVector = Icons.Sharp.Check,
+                imageVector = MiuixIcons.Basic.Check,
                 contentDescription = null,
                 modifier = Modifier.padding(end = ButtonDefaults.IconSpacing).size(14.dp),
                 tint = colorScheme.onPrimaryContainer
@@ -186,14 +195,13 @@ private fun ThreadPoll(modifier: Modifier = Modifier, info: ThreadPollInfo, onPu
     }
     val pollEnabled = !info.isPolled && onPull != null && !info.isTimeExpired
 
-    Surface(
+    // Miuix card, same as the other cards in this thread list. Miuix's `Card` ships with a
+    // zero `insideMargin`, so the 16dp content inset is set explicitly here.
+    MiuixCard(
         modifier = modifier,
-        shape = MaterialTheme.shapes.large,
-        tonalElevation = 2.dp,
+        insideMargin = PaddingValues(16.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-        ) {
+        Column {
             Text(
                 text = info.title ?: stringResource(R.string.text_poll_title),
                 style = MaterialTheme.typography.titleMedium
@@ -291,7 +299,7 @@ fun StateScreenScope.ThreadContent(
     viewModel: ThreadViewModel,
     lazyListState: LazyListState,
     contentPadding: PaddingValues = PaddingNone,
-    topAppBarScrollBehavior: TopAppBarScrollBehavior,
+    topAppBarScrollBehavior: ScrollBehavior,
     useStickyHeader: Boolean // Bug: StickyHeader doesn't respect content padding
 ) {
     val navigator = LocalNavController.current
@@ -307,12 +315,20 @@ fun StateScreenScope.ThreadContent(
     }
 
     // Container {
-        SwipeUpLazyLoadColumn(
+        // MIUI/HyperOS 双击状态栏回到顶部：列表必须响应全局 ScrollToTop 事件，
+    // 与 MyLazyColumn / MyLazyVerticalGrid 的行为保持一致。
+    onGlobalEvent<GlobalEvent.ScrollToTop> {
+        lazyListState.animateScrollToItem(0)
+    }
+
+    SwipeUpLazyLoadColumn(
             modifier = modifier
                 .fillMaxSize()
                 .testColumn(),
             state = lazyListState,
-            contentPadding = contentPadding,
+            // Gutters and card rhythm match the other card lists.
+            contentPadding = contentPadding + PaddingValues(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             isLoading = isLoadingMore,
             onLoad = onSwipeUpRefresh,
             onLazyLoad = viewModel::requestLoadMore.takeIf { hasMore && state.data.isNotEmpty() },
@@ -326,14 +342,15 @@ fun StateScreenScope.ThreadContent(
         ) {
             item(key = Type.FirstPost.key, contentType = Type.FirstPost) {
                 val firstPost = state.firstPost ?: return@item
-                Column {
+                Column(
+                    // Same rhythm as the list itself: 12dp between cards. The gutter already comes
+                    // from the list's contentPadding, so these cards must NOT inset themselves again.
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
                     PostCardItem(viewModel, firstPost, localUid, collectPid)
 
                     state.thread?.originThreadInfo?.let { info ->
-                        OriginThreadCard(
-                            originThreadInfo = info,
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-                        ) {
+                        OriginThreadCard(originThreadInfo = info) {
                             val threadId = info.item.tid.toLong()
                             navigator.navigateDebounced(route = Thread(threadId, forumId = info.get { fid }))
                         }
@@ -341,16 +358,10 @@ fun StateScreenScope.ThreadContent(
 
                     state.thread?.pollInfo?.let { pollInfo ->
                         ThreadPoll(
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
                             info = pollInfo,
                             onPull = viewModel::requestPollPost.takeIf { localUid != null },
                         )
                     }
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-                        thickness = 2.dp
-                    )
                 }
             }
 
@@ -416,7 +427,7 @@ private fun LoadPreviousButton(isLoading: Boolean, onClick: () -> Unit) {
     TextButton(
         onClick = onClick,
         enabled = !isLoading,
-        shape = MaterialTheme.shapes.extraSmall
+        shape = SquircleShape(SquircleCornerRadius.ExtraSmall)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -425,7 +436,7 @@ private fun LoadPreviousButton(isLoading: Boolean, onClick: () -> Unit) {
         ) {
             if (isLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
+                    size = 16.dp,
                     strokeWidth = 2.5.dp
                 )
             } else {
@@ -633,7 +644,7 @@ fun PostCard(
         hideBlockedContent = immersiveMode,
     ) {
         LongClickMenu(
-            shape = MaterialTheme.shapes.medium,
+            shape = SquircleShape(SquircleCornerRadius.Medium),
             menuContent = {
                 if (onReplyClick != null) {
                     TextMenuItem(text = R.string.btn_reply) {
@@ -659,97 +670,124 @@ fun PostCard(
                 }
             }
         ) {
-            Card(
-                header = {
-                    if (immersiveMode) return@Card
-                    SharedTransitionUserHeader(
-                        author = author,
-                        desc = remember { post.getDescText(context) },
-                        extraKey = post.id,
-                        onClick = onUserClick
-                    ) {
-                        if (post.floor > 1 && onLikeClick != null) {
-                            PostLikeButton(like = post.like, onClick = { onLikeClick(post) })
+            // `ListItemCard` is the app's shared wrapper around Miuix's `Card`, so this floor gets
+            // a real card surface and a 16dp squircle clip.
+            //
+            // The legacy `widgets.compose.Card` this used to nest inside is gone: it contributed
+            // only padding (it relied on a theme-level modifier hook that nothing installs any
+            // more, so it painted no background of its own), which made it look like a card
+            // container while actually being a no-op shell. Its insets are reproduced below so the
+            // rendered layout is unchanged:
+            //   * outer: 16dp vertical + 16dp horizontal (the shell's `padding(vertical)` +
+            //     `padding(contentPadding)`, folded into one `padding`)
+            //   * header, then a content column with 8dp top padding and 8dp item spacing
+            // Note Miuix `Card`'s `insideMargin` defaults to 0dp, hence the explicit padding here.
+            ListItemCard {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                ) {
+                    if (!immersiveMode) {
+                        SharedTransitionUserHeader(
+                            author = author,
+                            desc = remember { post.getDescText(context) },
+                            extraKey = post.id,
+                            onClick = onUserClick
+                        ) {
+                            if (post.floor > 1 && onLikeClick != null) {
+                                PostLikeButton(like = post.like, onClick = { onLikeClick(post) })
+                            }
                         }
                     }
-                },
-                content = {
+
                     Column(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = paddingModifier.fillMaxWidth()
-                    ) {
-                        if (showTitle) {
-                            Text(
-                                text = post.title,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontSize = 15.sp
-                            )
-                        }
-
-                        if (isCollected) {
-                            Chip(
-                                text = stringResource(id = R.string.title_collected_floor),
-                                invertColor = true,
-                                prefixIcon = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Star,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            )
-                        }
-
-                        post.contentRenders.fastForEach { it.Render() }
-                    }
-
-                    if (post.subPosts == null || post.subPostNumber <= 0 || immersiveMode) return@Card
-
-                    Surface(
-                        modifier = paddingModifier,
-                        shape = MaterialTheme.shapes.small,
-                        tonalElevation = 4.dp
+                        modifier = Modifier.padding(top = 8.dp),
                     ) {
                         Column(
-                            modifier = Modifier.padding(vertical = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = paddingModifier.fillMaxWidth()
                         ) {
-                            post.subPosts.fastForEach { item ->
-                                BlockableContent(
-                                    blocked = item.blocked,
-                                    blockedTip = {
-                                        SubPostBlockedTip(modifier = Modifier.padding(horizontal = 12.dp))
-                                    },
-                                    hideBlockedContent = false // filtered in repository
+                            if (showTitle) {
+                                Text(
+                                    text = post.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontSize = 15.sp
+                                )
+                            }
+
+                            if (isCollected) {
+                                Chip(
+                                    text = stringResource(id = R.string.title_collected_floor),
+                                    invertColor = true,
+                                    prefixIcon = {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Star,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                )
+                            }
+
+                            PbContentRenderList(post.contentRenders)
+                        }
+
+                        if (post.subPosts != null && post.subPostNumber > 0 && !immersiveMode) {
+                            Surface(
+                                modifier = paddingModifier,
+                                shape = SquircleShape(SquircleCornerRadius.Small),
+                                // Explicit Miuix neutral instead of tonalElevation: elevation tints
+                                // blue on the themed dark surface, which is why the 楼中楼 block
+                                // read as blue. background (not surfaceContainer — that is the
+                                // card's own tone, the block would blend in) reads one step darker
+                                // in light mode and darker still in dark mode, the standard
+                                // inset-well contrast inside a card.
+                                color = MiuixTheme.colorScheme.background
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
-                                    SubPostItem(
-                                        subPost = item,
+                                    post.subPosts.fastForEach { item ->
+                                        BlockableContent(
+                                            blocked = item.blocked,
+                                            blockedTip = {
+                                                SubPostBlockedTip(modifier = Modifier.padding(horizontal = 12.dp))
+                                            },
+                                            hideBlockedContent = false // filtered in repository
+                                        ) {
+                                            SubPostItem(
+                                                subPost = item,
+                                                modifier = Modifier
+                                                    .padding(horizontal = 12.dp)
+                                                    .fillMaxWidth(),
+                                                onReplyClick = onSubPostReplyClick?.let {
+                                                    { onSubPostReplyClick(post, item) }
+                                                },
+                                                onOpenSubPosts = onOpenSubPosts,
+                                                onMenuCopyClick = onMenuCopyClick
+                                            )
+                                        }
+                                    }
+
+                                    if (post.subPostNumber <= post.subPosts.size) return@Column
+                                    Text(
+                                        text = stringResource(R.string.open_all_sub_posts, post.subPostNumber),
                                         modifier = Modifier
-                                            .padding(horizontal = 12.dp)
-                                            .fillMaxWidth(),
-                                        onReplyClick = onSubPostReplyClick?.let {
-                                            { onSubPostReplyClick(post, item) }
-                                        },
-                                        onOpenSubPosts = onOpenSubPosts,
-                                        onMenuCopyClick = onMenuCopyClick
+                                            .fillMaxWidth()
+                                            .clickable { onOpenSubPosts(0) }
+                                            .padding(vertical = 2.dp, horizontal = 12.dp),
+                                        color = MaterialTheme.colorScheme.primary,
+                                        style = MaterialTheme.typography.labelLarge,
                                     )
                                 }
                             }
-
-                            if (post.subPostNumber <= post.subPosts.size) return@Column
-                            Text(
-                                text = stringResource(R.string.open_all_sub_posts, post.subPostNumber),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onOpenSubPosts(0) }
-                                    .padding(vertical = 2.dp, horizontal = 12.dp),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelLarge,
-                            )
                         }
                     }
                 }
-            )
+            }
         }
     }
 }

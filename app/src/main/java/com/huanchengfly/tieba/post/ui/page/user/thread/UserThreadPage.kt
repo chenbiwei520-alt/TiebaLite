@@ -1,13 +1,14 @@
 package com.huanchengfly.tieba.post.ui.page.user.thread
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -26,10 +27,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.huanchengfly.tieba.post.PaddingNone
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
+import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.widgets.compose.PbContentText
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
 import com.huanchengfly.tieba.post.ui.models.Author
 import com.huanchengfly.tieba.post.ui.models.SimpleForum
 import com.huanchengfly.tieba.post.ui.models.ThreadItem
@@ -37,7 +41,6 @@ import com.huanchengfly.tieba.post.ui.page.LocalNavController
 import com.huanchengfly.tieba.post.ui.page.main.explore.createThreadClickListeners
 import com.huanchengfly.tieba.post.ui.page.thread.ThreadLikeUiEvent
 import com.huanchengfly.tieba.post.ui.page.user.thread.UserThreadViewModel.Companion.UserThreadVmFactory
-import com.huanchengfly.tieba.post.ui.widgets.compose.Card
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadContentType
@@ -46,12 +49,14 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeader
 import com.huanchengfly.tieba.post.ui.widgets.compose.defaultBottomIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.DateTimeUtils
+import top.yukonga.miuix.kmp.basic.Card
 
 @Composable
 fun UserThreadPage(
     uid: Long,
     fluid: Boolean = false,
     lazyListState: LazyListState = rememberLazyListState(),
+    contentPadding: PaddingValues = PaddingValues(0.dp),
     viewModel: UserThreadViewModel = hiltViewModel<UserThreadViewModel, UserThreadVmFactory> { it.create(uid) },
 ) {
     val context = LocalContext.current
@@ -97,22 +102,21 @@ fun UserThreadPage(
             SwipeUpLazyLoadColumn(
                 modifier = Modifier.fillMaxSize(),
                 state = lazyListState,
+                // Card grid: 16dp side margins + the list's 12dp rhythm, same as the forum tabs.
+                contentPadding = contentPadding + PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 isLoading = isLoadingMore,
                 onLazyLoad = viewModel::onLoadMore.takeIf { hasMore },
                 bottomIndicator = defaultBottomIndicator,
             ) {
-                itemsIndexed(data, key = { _, it -> it.id }, ThreadContentType) { i, thread ->
-                    Column {
-                        UserThread(
-                            thread = thread,
-                            onClick = threadClickListeners.onClicked,
-                            onClickForum = threadClickListeners.onForumClicked,
-                        )
-
-                        if (i < data.lastIndex) {
-                            HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
-                        }
-                    }
+                itemsIndexed(data, key = { _, it -> it.id }, ThreadContentType) { _, thread ->
+                    // `UserThread` renders its own card, so no wrapper here.
+                    UserThread(
+                        modifier = Modifier.fillMaxWidth(),
+                        thread = thread,
+                        onClick = threadClickListeners.onClicked,
+                        onClickForum = threadClickListeners.onForumClicked,
+                    )
                 }
             }
         }
@@ -129,9 +133,22 @@ private fun UserThread(
     val context = LocalContext.current
     val (forumId, forumName, _) = thread.simpleForum
 
+    // One real Miuix card per post, same design as the notifications / replies cards: opaque
+    // surface, 16dp corners, one inner inset (16/12), 8dp between header, body and media. The
+    // former `widgets.compose.Card` has NO background of its own — it expected the theme's global
+    // `block` modifier to draw the card surface, which nothing installs anymore, so every post
+    // rendered as bare content floating on the page background.
     Card(
-        modifier = modifier,
-        header = {
+        modifier = modifier.fillMaxWidth(),
+        showIndication = true,
+        onClick = { onClick(thread) },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             UserHeader(
                 name = thread.author.name,
                 avatar = thread.author.avatarUrl,
@@ -139,7 +156,7 @@ private fun UserThread(
             ) {
                 Surface(
                     onClick = { onClickForum(thread) },
-                    shape = MaterialTheme.shapes.extraSmall,
+                    shape = SquircleShape(SquircleCornerRadius.ExtraSmall),
                     color = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
                     Text(
@@ -150,19 +167,16 @@ private fun UserThread(
                     )
                 }
             }
-        },
-        content = {
+
             if (!thread.content.isNullOrEmpty()) {
                 PbContentText(
                     text = thread.content,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(modifier),
+                    modifier = Modifier.fillMaxWidth(),
                     fontSize = 15.sp,
                     lineSpacing = 0.8.sp,
                     overflow = TextOverflow.Ellipsis,
                     maxLines = 5,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
                 )
             }
 
@@ -173,11 +187,9 @@ private fun UserThread(
                 medias = thread.medias ?: emptyList(),
                 videoInfo = thread.video,
             )
-        },
-        onClick = { onClick(thread) },
-    )
+        }
+    }
 }
-
 @Preview("UserThreadPreview")
 @Composable
 private fun UserThreadPreview() = TiebaLiteTheme {

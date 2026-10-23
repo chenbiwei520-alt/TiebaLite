@@ -25,11 +25,13 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.WindowInsets
@@ -37,24 +39,27 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.TopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -100,9 +105,22 @@ import androidx.compose.ui.util.lerp
 import com.huanchengfly.tieba.post.theme.FloatProducer
 import com.huanchengfly.tieba.post.theme.ProvideContentColorTextStyle
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
+import com.huanchengfly.tieba.post.theme.createTopAppBarColors
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import com.huanchengfly.tieba.post.ui.miuix.MiuixProgressiveBlurBar
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+
+// Miuix scroll behavior. The Material3 `TopAppBarScrollBehavior` used to drive the collapsing
+// bars below; it is replaced by Miuix's own `ScrollBehavior` so that the whole bar (height,
+// offsets, blur fade) is animated by a single scroll pipeline. Miuix's own
+// `ExitUntilCollapsedScrollBehavior` is not visible outside `miuix-ui` (Kotlin `private`), so the
+// public `MiuixScrollBehavior` factory is the only usable entry point.
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.ScrollBehavior as MiuixScrollBehaviorState
+import top.yukonga.miuix.kmp.basic.TopAppBarState as MiuixTopAppBarState
+import top.yukonga.miuix.kmp.basic.rememberTopAppBarState as rememberMiuixTopAppBarState
 
 /**
  * compose/material3/material3/src/commonMain/kotlin/androidx/compose/material3/AppBar.kt
@@ -124,7 +142,7 @@ import kotlin.math.roundToInt
  *
  * A [colorTransitionFraction] provides a percentage value that can be used to generate a color.
  * Usually, an app bar implementation will pass in a [colorTransitionFraction] read from the
- * [TopAppBarState.collapsedFraction] or the [TopAppBarState.overlappedFraction].
+ * [MiuixTopAppBarState.collapsedFraction] or the [MiuixTopAppBarState.overlappedFraction].
  *
  * @param colorTransitionFraction a `0.0` to `1.0` value that represents a color transition
  *   percentage
@@ -155,10 +173,10 @@ private fun TopAppBarColors.containerColor(colorTransitionFraction: Float): Colo
  *   [IconButton]s. The default layout here is a [Row], so icons inside will be placed horizontally.
  * @param colors [TopAppBarColors] that will be used to resolve the colors used for this top app bar
  *   in different states. See [TopAppBarDefaults.topAppBarColors].
- * @param scrollBehavior a [TopAppBarScrollBehavior] which holds various offset values that will be
+ * @param scrollBehavior a [ScrollBehavior] (Miuix) which holds various offset values that will be
  *   applied by this top app bar to set up its height and colors. A scroll behavior is designed to
  *   work in conjunction with a scrolled content to change the top app bar appearance as the content
- *   scrolls. See [TopAppBarScrollBehavior.nestedScrollConnection].
+ *   scrolls. See [ScrollBehavior.nestedScrollConnection].
  * @param content extra content displayed below the top app bar, mostly are [TabRow].
  * */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -170,22 +188,40 @@ fun TopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
-    scrollBehavior: TopAppBarScrollBehavior? = null,
+    scrollBehavior: MiuixScrollBehaviorState? = null,
+    backdrop: LayerBackdrop? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    SingleRowTopAppBar(
-        modifier = modifier,
-        title = title,
-        titleTextStyle = MaterialTheme.typography.titleLarge,
-        content = content,
-        titleHorizontalAlignment = titleHorizontalAlignment,
-        navigationIcon = navigationIcon,
-        actions = actions,
-        expandedHeight = TopAppBarDefaults.TopAppBarExpandedHeight,
-        windowInsets = TopAppBarDefaults.windowInsets,
-        colors = colors,
-        scrollBehavior = scrollBehavior
-    )
+    // With a backdrop the bar itself goes transparent so the progressive blur behind it shows
+    val barColors = if (backdrop != null) {
+        MaterialTheme.colorScheme.createTopAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+        )
+    } else {
+        colors
+    }
+    // The bar is `statusBar inset + TopAppBarExpandedHeight` tall; size the blur ramp to match so
+    // the clear end lands on the bar's bottom edge instead of inside it. See `MiuixProgressiveBlurBar`.
+    val bandHeight = with(LocalDensity.current) {
+        WindowInsets.statusBars.getTop(this).toDp() + TopAppBarDefaults.TopAppBarExpandedHeight
+    }
+
+    MiuixProgressiveBlurBar(backdrop = backdrop, bandHeight = bandHeight) {
+        SingleRowTopAppBar(
+            modifier = modifier,
+            title = title,
+            titleTextStyle = MaterialTheme.typography.titleLarge,
+            content = content,
+            titleHorizontalAlignment = titleHorizontalAlignment,
+            navigationIcon = navigationIcon,
+            actions = actions,
+            expandedHeight = TopAppBarDefaults.TopAppBarExpandedHeight,
+            windowInsets = TopAppBarDefaults.windowInsets,
+            colors = barColors,
+            scrollBehavior = scrollBehavior
+        )
+    }
 }
 
 /**
@@ -204,10 +240,10 @@ fun TopAppBar(
  *   [IconButton]s. The default layout here is a [Row], so icons inside will be placed horizontally.
  * @param colors [TopAppBarColors] that will be used to resolve the colors used for this top app bar
  *   in different states. See [TopAppBarDefaults.topAppBarColors].
- * @param scrollBehavior a [TopAppBarScrollBehavior] which holds various offset values that will be
+ * @param scrollBehavior a [ScrollBehavior] (Miuix) which holds various offset values that will be
  *   applied by this top app bar to set up its height and colors. A scroll behavior is designed to
  *   work in conjunction with a scrolled content to change the top app bar appearance as the content
- *   scrolls. See [TopAppBarScrollBehavior.nestedScrollConnection].
+ *   scrolls. See [ScrollBehavior.nestedScrollConnection].
  * @param content extra content displayed below the top app bar, mostly are [TabRow].
  * */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -218,7 +254,8 @@ fun TopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
-    scrollBehavior: TopAppBarScrollBehavior? = null,
+    scrollBehavior: MiuixScrollBehaviorState? = null,
+    backdrop: LayerBackdrop? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) =
     TopAppBar(
@@ -230,34 +267,28 @@ fun TopAppBar(
         actions = actions,
         colors = colors,
         scrollBehavior = scrollBehavior,
+        backdrop = backdrop,
         content = content
     )
 
 /**
  * Top app bar for paged scrollable contents.
  *
- * Used in [BlurScaffold] to apply background blurring with [content]. For normal
- * Scaffold with [TabRow], compose inside Scaffold with [Column] directly.
- *
- * @see androidx.compose.material3.TopAppBar
+ * Rendered with HyperOS (Miuix) tokens: Miuix surface background, 64 dp bar row below the status
+ * bar inset, and theme-driven content colors. The Material-style parameters (`colors`,
+ * `scrollBehavior`, `canScrollBackward`) are accepted for call-site compatibility but the visual
+ * result is Miuix-styled.
  *
  * @param title the title to be displayed in the top app bar
  * @param modifier the [Modifier] to be applied to this top app bar
- * @param navigationIcon the navigation icon displayed at the start of the top app bar. This should
- *   typically be an [IconButton] or [IconToggleButton].
- * @param actions the actions displayed at the end of the top app bar. This should typically be
- *   [IconButton]s. The default layout here is a [Row], so icons inside will be placed horizontally.
- * @param colors [TopAppBarColors] that will be used to resolve the colors used for this top app bar
- *   in different states. See [TopAppBarDefaults.topAppBarColors].
- * @param scrollBehavior a [TopAppBarScrollBehavior] which holds various offset values that will be
- *   applied by this top app bar to set up its height and colors. A scroll behavior is designed to
- *   work in conjunction with a scrolled content to change the top app bar appearance as the content
- *   scrolls. See [TopAppBarScrollBehavior.nestedScrollConnection].
- * @param canScrollBackward scroll backward state of current page, TopAppBar will use this instead
- *   of `overlapFraction` to obtain the container color.
- * @param content extra content displayed below the top app bar, mostly are [TabRow].
+ * @param titleHorizontalAlignment horizontal alignment of the title
+ * @param navigationIcon the navigation icon displayed at the start of the top app bar
+ * @param actions the actions displayed at the end of the top app bar
+ * @param colors kept for call-site compatibility; visuals come from MiuixTheme
+ * @param scrollBehavior kept for call-site compatibility
+ * @param canScrollBackward kept for call-site compatibility
+ * @param content extra content displayed below the top app bar, e.g. a [TabRow].
  * */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TopAppBarPaged(
     modifier: Modifier = Modifier,
@@ -266,90 +297,114 @@ fun TopAppBarPaged(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
-    scrollBehavior: TopAppBarScrollBehavior? = null,
+    scrollBehavior: MiuixScrollBehaviorState? = null,
     canScrollBackward: () -> Boolean = { false },
+    backdrop: LayerBackdrop? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    val expandedHeight: Dp = TopAppBarDefaults.TopAppBarExpandedHeight
-
-    // Obtain the container color from the scroll state of current page using the `canScrollBackward`.
-    val targetColor by
-        remember(colors, scrollBehavior) {
-            derivedStateOf {
-                colors.containerColor(if (canScrollBackward()) 1f else 0f)
-            }
+    // The Miuix-styled bar is static and ignores its scroll behavior, but pages still attach
+    // `scrollBehavior.nestedScrollConnection` to their scroll containers. An M3 state defaults to
+    // an unbounded heightOffsetLimit (-Float.MAX_VALUE), which would consume every scroll delta
+    // before the content ever sees it. Pin the state like Miuix's pinned SmallTopAppBar does so
+    // the connection consumes nothing and scrolling reaches the content.
+    SideEffect {
+        scrollBehavior?.state?.let { state ->
+            if (state.heightOffsetLimit != 0f) state.heightOffsetLimit = 0f
+            if (state.heightOffset != 0f) state.heightOffset = 0f
         }
+    }
 
-    val appBarContainerColor =
-        animateColorAsState(
-            targetColor,
-            animationSpec = TopAppBarColorSpect
-        )
+    // Only paint the bar's own fill when there is nothing to blur; otherwise it would cover the
+    // progressive blur layer sitting behind the bar.
+    val barFill = if (backdrop == null) {
+        top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.surface
+    } else {
+        Color.Transparent
+    }
 
-    // Wrap the given actions in a Row.
-    val actionsRow =
-        @Composable {
-            Row(
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-                content = actions,
-            )
-        }
+    // The bar's resting height is `statusBar inset + MiuixTopBarRowHeight`, and this composable
+    // hosts a tab row inside that row. Give the blur ramp that full height so it is still at a
+    // useful strength where the tab pills sit and only reaches clear at the bar's bottom edge —
+    // with the default 64.dp strip the pills would float on an almost-clear background.
+    val bandHeight = with(LocalDensity.current) {
+        WindowInsets.statusBars.getTop(this).toDp() + MiuixTopBarRowHeight
+    }
 
-    // Compose a Surface with a TopAppBarLayout content.
-    // The surface's background color is animated as specified above.
-    // The height of the app bar is determined by subtracting the bar's height offset from the
-    // app bar's defined constant height value (i.e. the ContainerHeight token).
-    Column(
-        modifier =
-            modifier
-                .drawWithCache {
-                    onDrawBehind {
-                        val color = appBarContainerColor.value
-                        if (color != Color.Unspecified) {
-                            drawRect(color = color)
-                        }
-                    }
-                }
-                .semantics { isTraversalGroup = true }
-                .pointerInput(Unit) {},
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        TopAppBarLayout(
+    MiuixProgressiveBlurBar(backdrop = backdrop, bandHeight = bandHeight) {
+        Column(
             modifier =
-                Modifier
-                    .windowInsetsPadding(TopAppBarDefaults.windowInsets)
-                    // clip after padding so we don't show the title over the inset area
-                    .clipToBounds()
-                    .heightIn(max = expandedHeight)
-                    .adjustHeightOffsetLimit(scrollBehavior),
-            scrolledOffset = { scrollBehavior?.state?.heightOffset ?: 0f },
-            navigationIconContentColor = colors.navigationIconContentColor,
-            titleContentColor = colors.titleContentColor,
-            actionIconContentColor = colors.actionIconContentColor,
-            title = title,
-            titleTextStyle = MaterialTheme.typography.titleLarge,
-            titleAlpha = { 1f },
-            titleVerticalArrangement = Arrangement.Center,
-            titleHorizontalAlignment = titleHorizontalAlignment,
-            titleBottomPadding = 0,
-            hideTitleSemantics = false,
-            navigationIcon = navigationIcon,
-            actions = actionsRow,
-            height = expandedHeight,
-        )
+                modifier
+                    .background(color = barFill)
+                    .semantics { isTraversalGroup = true }
+                    .pointerInput(Unit) {},
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier =
+                    Modifier
+                        .windowInsetsPadding(
+                            WindowInsets.statusBars.union(WindowInsets.displayCutout.only(WindowInsetsSides.Horizontal))
+                        )
+                        .heightIn(min = MiuixTopBarRowHeight)
+                        .padding(horizontal = MiuixTopBarHorizontalPadding),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                navigationIcon()
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = when (titleHorizontalAlignment) {
+                        Alignment.CenterHorizontally -> Alignment.Center
+                        Alignment.End -> Alignment.CenterEnd
+                        else -> Alignment.CenterStart
+                    },
+                ) {
+                    CompositionLocalProvider(
+                        LocalContentColor provides top.yukonga.miuix.kmp.theme.MiuixTheme.colorScheme.onSurface,
+                        LocalTextStyle provides MaterialTheme.typography.titleLarge,
+                        content = title,
+                    )
+                }
+                actions()
+            }
 
-        if (content != null) {
-            Column (
-                modifier = Modifier.windowInsetsPadding(
-                    TopAppBarDefaults.windowInsets.only(WindowInsetsSides.Horizontal)
-                ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                content = content
-            )
+            if (content != null) {
+                content()
+            }
         }
     }
 }
+
+internal val MiuixTopBarRowHeight = 64.dp
+
+/**
+ * Resting height of a [TopAppBarPaged]: the status bar inset plus the bar row, held at the tallest
+ * inset seen so far.
+ *
+ * Two things used to move a page body vertically for a handful of frames and snap it back:
+ *
+ * 1. The Scaffold reports the bar's *measured* height as the content padding, and that measurement
+ *    can come back one status bar short — the list then slides up under the bar and returns.
+ * 2. `WindowInsets.statusBars` legitimately drops to zero while a full screen layer hides the
+ *    system bars (the image viewer does, see PhotoViewerHost) and comes back when it closes.
+ *    A page whose padding follows it shifts by exactly one status bar height on every such blip.
+ *
+ * The resting height is deterministic, so pages clamp their top inset to this value: identical
+ * when nothing wobbles, motionless when something does. The inset only ever grows, which is what
+ * "resting" means — the bars are never hidden for longer than a full screen layer is on top.
+ */
+@Composable
+fun staticTopBarHeight(): Dp {
+    val density = LocalDensity.current
+    val statusBarPx = WindowInsets.statusBars.getTop(density)
+    val tallestStatusBarPx = remember { mutableIntStateOf(statusBarPx) }
+    SideEffect {
+        if (statusBarPx > tallestStatusBarPx.intValue) tallestStatusBarPx.intValue = statusBarPx
+    }
+    return with(density) { maxOf(tallestStatusBarPx.intValue, statusBarPx).toDp() } +
+        MiuixTopBarRowHeight
+}
+
+private val MiuixTopBarHorizontalPadding = 4.dp
 
 /**
  * A center aligned top app bar with non-collapsible [content].
@@ -367,10 +422,10 @@ fun TopAppBarPaged(
  *   [IconButton]s. The default layout here is a [Row], so icons inside will be placed horizontally.
  * @param colors [TopAppBarColors] that will be used to resolve the colors used for this top app bar
  *   in different states. See [TopAppBarDefaults.topAppBarColors].
- * @param scrollBehavior a [TopAppBarScrollBehavior] which holds various offset values that will be
+ * @param scrollBehavior a [ScrollBehavior] (Miuix) which holds various offset values that will be
  *   applied by this top app bar to set up its height and colors. A scroll behavior is designed to
  *   work in conjunction with a scrolled content to change the top app bar appearance as the content
- *   scrolls. See [TopAppBarScrollBehavior.nestedScrollConnection].
+ *   scrolls. See [ScrollBehavior.nestedScrollConnection].
  * @param content extra content displayed below the top app bar, mostly are [TabRow].
  * */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -381,7 +436,8 @@ fun CenterAlignedTopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
-    scrollBehavior: TopAppBarScrollBehavior? = null,
+    scrollBehavior: MiuixScrollBehaviorState? = null,
+    backdrop: LayerBackdrop? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) =
     TopAppBar(
@@ -392,7 +448,8 @@ fun CenterAlignedTopAppBar(
         actions = actions,
         content = content,
         colors = colors,
-        scrollBehavior = scrollBehavior
+        scrollBehavior = scrollBehavior,
+        backdrop = backdrop,
     )
 
 
@@ -404,7 +461,8 @@ fun CenterAlignedTopAppBar(
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
-    scrollBehavior: TopAppBarScrollBehavior? = null,
+    scrollBehavior: MiuixScrollBehaviorState? = null,
+    backdrop: LayerBackdrop? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) =
     TopAppBar(
@@ -417,6 +475,7 @@ fun CenterAlignedTopAppBar(
         actions = actions,
         colors = colors,
         scrollBehavior = scrollBehavior,
+        backdrop = backdrop,
         content = content
     )
 
@@ -439,7 +498,7 @@ private fun SingleRowTopAppBar(
     expandedHeight: Dp,
     windowInsets: WindowInsets,
     colors: TopAppBarColors,
-    scrollBehavior: TopAppBarScrollBehavior?,
+    scrollBehavior: MiuixScrollBehaviorState?,
 ) {
     require(expandedHeight.isSpecified && expandedHeight.isFinite) {
         "The expandedHeight is expected to be specified and finite"
@@ -499,7 +558,13 @@ private fun SingleRowTopAppBar(
                     // clip after padding so we don't show the title over the inset area
                     .clipToBounds()
                     .heightIn(max = expandedHeight)
-                    .adjustHeightOffsetLimit(scrollBehavior),
+                    // This row is the whole bar (it is not pinned above anything), so the offset may
+                    // run the full expanded height. Must stay a constant — see
+                    // `adjustHeightOffsetLimit` for why the measured height can't be used here.
+                    .adjustHeightOffsetLimit(
+                        scrollBehavior = scrollBehavior,
+                        expandedHeight = with(LocalDensity.current) { expandedHeight.toPx() },
+                    ),
             scrolledOffset = { scrollBehavior?.state?.heightOffset ?: 0f },
             navigationIconContentColor = colors.navigationIconContentColor,
             titleContentColor = colors.titleContentColor,
@@ -553,10 +618,10 @@ private fun SingleRowTopAppBar(
  * @param windowInsets a window insets that app bar will respect.
  * @param colors [TopAppBarColors] that will be used to resolve the colors used for this top app bar
  *   in different states. See [TopAppBarDefaults.topAppBarColors].
- * @param scrollBehavior a [androidx.compose.material3.ExitUntilCollapsedScrollBehavior] which holds
- *   various offset values that will be applied by this top app bar to set up its height and colors. A
- *   scroll behavior is designed to work in conjunction with a scrolled content to change the top
- *   app bar appearance as the content scrolls. See [TopAppBarScrollBehavior.nestedScrollConnection].
+ * @param scrollBehavior a [ScrollBehavior] (Miuix) which holds various offset values that will be
+ *   applied by this top app bar to set up its height and colors. A scroll behavior is designed to
+ *   work in conjunction with a scrolled content to change the top app bar appearance as the content
+ *   scrolls. See [ScrollBehavior.nestedScrollConnection].
  * @param collapsibleExtraContent is [content] collapsible.
  * @param content extra content to be displayed below the top app bar, mostly are [TabRow].
  * */
@@ -574,7 +639,7 @@ fun CollapsingAvatarTopAppBar(
     avatarMax: Dp = ExpandedAvatarSize,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
-    scrollBehavior: TopAppBarScrollBehavior? = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(),
+    scrollBehavior: MiuixScrollBehaviorState? = defaultMiuixScrollBehavior(),
     collapsibleExtraContent: Boolean = false,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
@@ -640,9 +705,17 @@ fun CollapsingAvatarTopAppBar(
                     .windowInsetsPadding(windowInsets)
                     // clip after padding so we don't show the title over the inset area
                     .clipToBounds()
-                    .adjustPinnedHeightOffsetLimit(
+                    // Stable limit (see `adjustHeightOffsetLimit`): measure the *declared* expanded
+                    // height, not the node's own fluctuating height. The collapsing layout sizes
+                    // itself from `heightOffset`, so deriving the limit from the measured height
+                    // used to oscillate the bar at ~45 Hz while scrolling.
+                    //
+                    // `TopAppBarExpandedHeight` (the pinned collapsed strip) is subtracted because
+                    // this bar keeps that strip visible when fully collapsed.
+                    .adjustHeightOffsetLimit(
                         scrollBehavior = scrollBehavior,
-                        collapsedHeight = with(LocalDensity.current) { collapsedHeight.toPx() }
+                        expandedHeight = with(LocalDensity.current) { expandedHeight.toPx() },
+                        collapsedHeight = with(LocalDensity.current) { collapsedHeight.toPx() },
                     ),
             scrolledOffset = { scrollBehavior?.state?.heightOffset ?: 0f },
             collapseFraction = { scrollBehavior?.state?.collapsedFraction ?: 0f },
@@ -695,10 +768,10 @@ fun CollapsingAvatarTopAppBar(
  * @param windowInsets a window insets that app bar will respect.
  * @param colors [TopAppBarColors] that will be used to resolve the colors used for this top app bar
  *   in different states. See [TopAppBarDefaults.topAppBarColors].
- * @param scrollBehavior a [androidx.compose.material3.ExitUntilCollapsedScrollBehavior] which holds
- *   various offset values that will be applied by this top app bar to set up its height and colors. A
- *   scroll behavior is designed to work in conjunction with a scrolled content to change the top
- *   app bar appearance as the content scrolls. See [TopAppBarScrollBehavior.nestedScrollConnection].
+ * @param scrollBehavior a [ScrollBehavior] (Miuix) which holds various offset values that will be
+ *   applied by this top app bar to set up its height and colors. A scroll behavior is designed to
+ *   work in conjunction with a scrolled content to change the top app bar appearance as the content
+ *   scrolls. See [ScrollBehavior.nestedScrollConnection].
  * @param collapsibleExtraContent is [content] collapsible.
  * @param content extra content to be displayed below the top app bar, mostly are [TabRow].
  * */
@@ -715,12 +788,14 @@ fun CollapsingTopAppBar(
     expandedHeight: Dp = TopAppBarDefaults.LargeAppBarExpandedHeight,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
-    scrollBehavior: TopAppBarScrollBehavior? = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(),
+    scrollBehavior: MiuixScrollBehaviorState? = defaultMiuixScrollBehavior(),
     collapsibleExtraContent: Boolean = false,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     CollapsingAvatarTopAppBar(
-        modifier = Modifier,
+        // Forward the caller's modifier — this used to be hardcoded to `Modifier`, which silently
+        // dropped every modifier passed by callers (padding, fillMaxWidth, alpha, ...).
+        modifier = modifier,
         avatar = null,
         avatarMax = Dp.Hairline,
         title = title,
@@ -755,7 +830,7 @@ fun TwoRowsTopAppBar(
     expandedHeight: Dp = TopAppBarDefaults.LargeAppBarExpandedHeight,
     windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
     colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
-    scrollBehavior: TopAppBarScrollBehavior? = null,
+    scrollBehavior: MiuixScrollBehaviorState? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     require(collapsedHeight.isSpecified && collapsedHeight.isFinite) {
@@ -831,7 +906,14 @@ fun TwoRowsTopAppBar(
                         // the top padding will always be applied by the layout above
                         .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Horizontal))
                         .clipToBounds()
-                        .adjustHeightOffsetLimit(scrollBehavior),
+                        // The second row expands to `expandedHeight - collapsedHeight`; the first
+                        // row above is pinned and always visible, so that pinned strip is the
+                        // `collapsedHeight` the offset must stop short by.
+                        .adjustHeightOffsetLimit(
+                            scrollBehavior = scrollBehavior,
+                            expandedHeight = with(LocalDensity.current) { expandedHeight.toPx() },
+                            collapsedHeight = with(LocalDensity.current) { collapsedHeight.toPx() },
+                        ),
                 scrolledOffset = { scrollBehavior?.state?.heightOffset ?: 0f },
                 navigationIconContentColor = colors.navigationIconContentColor,
                 titleContentColor = colors.titleContentColor,
@@ -1594,22 +1676,71 @@ private fun ProvideCollapseColorTextStyle(
     ProvideContentColorTextStyle(contentColor, textStyle, content)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-private fun Modifier.adjustHeightOffsetLimit(scrollBehavior: TopAppBarScrollBehavior?) =
-    scrollBehavior?.state?.let {
-        onSizeChanged { size ->
-            val offset = size.height.toFloat() - it.heightOffset
-            it.heightOffsetLimit = -offset
-        }
-    } ?: this
+/**
+ * Default [MiuixScrollBehaviorState] for the collapsing bars in this file.
+ *
+ * Kept as a `@Composable` factory instead of an inline default expression so that every call site
+ * that omits `scrollBehavior` still gets a state remembered across recompositions. The behavior
+ * itself is Miuix's `MiuixScrollBehavior` (an exit-until-collapsed style behavior: the bar scrolls
+ * out and stays out until the content scrolls back to the top).
+ */
+@Composable
+private fun defaultMiuixScrollBehavior(): MiuixScrollBehaviorState =
+    MiuixScrollBehavior(
+        state = rememberMiuixTopAppBarState(),
+        canScroll = { true },
+    )
 
-@OptIn(ExperimentalMaterial3Api::class)
-private fun Modifier.adjustPinnedHeightOffsetLimit(scrollBehavior: TopAppBarScrollBehavior?, collapsedHeight: Float) =
-    scrollBehavior?.state?.let {
-        onSizeChanged { size ->
-            val offset = size.height.toFloat() - it.heightOffset - collapsedHeight
-            it.heightOffsetLimit = -offset
+/**
+ * Mirrors Miuix's own `TopAppBarLayout` offset-limit handling: the app bar's height offset limit is
+ * the negative of the height the bar *expands to*, so that
+ * [MiuixTopAppBarState.collapsedFraction] progresses from 0 (expanded) to 1 (fully collapsed) as
+ * the bar scrolls away.
+ *
+ * **The limit must be derived from a stable height, never from the node's own measured height.**
+ * The collapsing layouts in this file size themselves as
+ * `layoutHeight = maxLayoutHeight + heightOffset` and, worse, `maxLayoutHeight` is itself a
+ * function of `collapsedFraction` (it interpolates `topExpandingOffset`, `subtitleExpandingOffset`
+ * and `extraContentHeight`). Feeding that measured height back into `heightOffsetLimit` closes a
+ * loop:
+ *
+ * ```
+ * heightOffset -> layoutHeight -> onSizeChanged -> heightOffsetLimit
+ *              -> (setHeightOffset coerces to [heightOffsetLimit, 0]) -> heightOffset -> ...
+ * ```
+ *
+ * `TopAppBarState.setHeightOffset` clamps on every write, so each turn of the loop snaps the offset
+ * to the freshly written bound. On device this shows up as a 2-frame oscillation of the bar height
+ * (measured: the expanded image bottom flipping between 691 px and 712 px at ~45 Hz while the list
+ * is stationary) — the "twitching" users see.
+ *
+ * Reading the *fixed* `expandedHeight` instead of the measured height removes the feedback path
+ * entirely: the limit is then a constant, so `heightOffset` can settle and `collapsedFraction`
+ * becomes a pure function of the scroll position.
+ *
+ * @param expandedHeight the bar's fully-expanded height **in px**, i.e. the value the bar lays out
+ *   to when `heightOffset == 0` and nothing has collapsed yet.
+ * @param collapsedHeight the height that stays pinned and visible when fully collapsed, in px.
+ */
+private fun Modifier.adjustHeightOffsetLimit(
+    scrollBehavior: MiuixScrollBehaviorState?,
+    expandedHeight: Float,
+    collapsedHeight: Float = 0f,
+) =
+    scrollBehavior?.state?.let { state ->
+        val newLimit = -(expandedHeight - collapsedHeight)
+        // Write eagerly during composition: `onSizeChanged` only fires after a layout pass, so a bar
+        // measured for the first time already needs a sane limit — otherwise `collapsedFraction`
+        // divides by a stale limit and the bar renders pre-collapsed on the first frame.
+        if (state.heightOffsetLimit != newLimit) {
+            state.heightOffsetLimit = newLimit
+            // `heightOffsetLimit` is a plain field, so mutating it does not clamp `heightOffset`.
+            // `TopAppBarState.setHeightOffset` is the only place that coerces into
+            // `[heightOffsetLimit, 0]`; re-writing the current value routes it through that clamp so
+            // the offset can never start a frame outside the new range.
+            state.heightOffset = state.heightOffset
         }
+        this
     } ?: this
 
 private val TopAppBarColorSpect: AnimationSpec<Color> = spring(stiffness = Spring.StiffnessMediumLow)

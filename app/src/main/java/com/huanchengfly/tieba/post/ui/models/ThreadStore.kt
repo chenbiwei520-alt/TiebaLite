@@ -13,4 +13,5 @@ data class ThreadStore(
     val postNo: Int,
     val count: Int,
     val author: Author,
+    val lastTimeMill: Long = 0L,
 )

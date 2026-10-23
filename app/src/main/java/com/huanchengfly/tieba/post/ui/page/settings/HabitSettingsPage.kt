@@ -3,14 +3,13 @@ package com.huanchengfly.tieba.post.ui.page.settings
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.BrandingWatermark
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.outlined.CalendarViewDay
 import androidx.compose.material.icons.outlined.PhotoSizeSelectActual
 import androidx.compose.material.icons.outlined.SecurityUpdateWarning
 import androidx.compose.material.icons.outlined.SpeakerNotesOff
 import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Verified
-import androidx.compose.material.icons.rounded.LiveTv
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.rounded.UnfoldLess
 import androidx.compose.runtime.Composable
 import com.huanchengfly.tieba.post.R
@@ -25,16 +24,21 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.preference.preference
 import com.huanchengfly.tieba.post.ui.widgets.compose.preference.toggleablePreference
 import com.huanchengfly.tieba.post.utils.ImageUtil
 import kotlinx.collections.immutable.persistentMapOf
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Sort
 
 @Composable
 fun HabitSettingsPage(
     habitSettings: Settings<HabitSettings>,
     onStickyHeaderClicked: () -> Unit,
     onBack: () -> Unit,
+    /** 面板模式：平板设置页的右栏自己画标题栏，本页不再画自己的顶栏。 */
+    paneMode: Boolean = false,
 ) {
     SettingsScaffold(
         titleRes = R.string.title_settings_read_habit,
         onBack = onBack,
+        paneMode = paneMode,
         settings = habitSettings,
         initialValue = HabitSettings()
     ) {
@@ -66,6 +70,15 @@ fun HabitSettingsPage(
             )
         }
 
+        group(title = R.string.settings_group_history) {
+            toggleablePreference(
+                property = HabitSettings::incognitoMode,
+                title = R.string.settings_incognito_mode,
+                summary = R.string.summary_settings_incognito_mode,
+                leadingIcon = Icons.Outlined.VisibilityOff
+            )
+        }
+
         group(title = R.string.settings_group_forum) {
             forumSortPreference()
         }
@@ -90,7 +103,7 @@ fun HabitSettingsPage(
             toggleablePreference(
                 property = HabitSettings::collectedDesc,
                 title = R.string.settings_collect_thread_desc_sort,
-                leadingIcon = Icons.AutoMirrored.Rounded.Sort,
+                leadingIcon = MiuixIcons.Sort,
                 summaryOn = R.string.tip_collect_thread_desc_sort_on,
                 summaryOff = R.string.tip_collect_thread_desc_sort
             )

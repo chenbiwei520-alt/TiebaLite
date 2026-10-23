@@ -60,6 +60,17 @@ class ThreadStoreRepository @Inject constructor(
 
         const val LOAD_LIMIT = 20
 
+        // The store API returns a formatted "yyyy-MM-dd HH:mm" date string
+        private fun parseStoreTime(lastTime: String): Long {
+            lastTime.toLongOrNull()?.let { return it * 1000L }
+
+            return runCatching {
+                java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+                    .parse(lastTime)
+                    ?.time
+            }.getOrNull() ?: 0L
+        }
+
         private suspend fun List<ThreadStoreInfo>.mapUiModel(showBothName: Boolean): List<ThreadStore> {
             return if (isNotEmpty()) {
                 withContext(Dispatchers.Default) {
@@ -73,6 +84,7 @@ class ThreadStoreRepository @Inject constructor(
                             markPid = it.markPid.toLongOrDefault(0),
                             postNo = it.postNo,
                             count = it.count,
+                            lastTimeMill = parseStoreTime(it.lastTime),
                             author = it.author.run {
                                 Author(
                                     id = requireNotNull(lzUid) { "Null author id of thread: ${it.threadId}" },

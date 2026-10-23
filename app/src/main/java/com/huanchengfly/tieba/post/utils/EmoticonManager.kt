@@ -3,10 +3,8 @@ package com.huanchengfly.tieba.post.utils
 import android.app.Application
 import android.content.Context
 import android.graphics.Bitmap
-import android.text.TextUtils
 import android.util.Log
 import androidx.collection.ArraySet
-import androidx.compose.ui.unit.TextUnit
 import coil3.BitmapImage
 import coil3.executeBlocking
 import coil3.imageLoader

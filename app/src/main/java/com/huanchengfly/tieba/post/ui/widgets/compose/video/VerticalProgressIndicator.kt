@@ -12,7 +12,6 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.BlendMode
@@ -23,6 +22,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.theme.FloatProducer
+import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
+import top.yukonga.miuix.kmp.squircle.squircleClip
 
 @Composable
 fun VerticalProgressIndicator(
@@ -35,7 +36,7 @@ fun VerticalProgressIndicator(
     Box(
         modifier = modifier
             .size(width = width, height = 250.dp)
-            .clip(MaterialTheme.shapes.large)
+            .squircleClip(SquircleCornerRadius.Large)
             .drawWithContent {
                 with(drawContext.canvas.nativeCanvas) {
                     drawRect(colors.activeTrackColor)
