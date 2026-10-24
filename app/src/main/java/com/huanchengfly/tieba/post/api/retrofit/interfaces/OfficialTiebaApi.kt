@@ -375,48 +375,6 @@ interface OfficialTiebaApi {
             ?: "ka=open"
     ): Flow<Sync>
 
-    @Headers(
-        "${Header.FORCE_LOGIN}: ${Header.FORCE_LOGIN_TRUE}",
-        "${Header.COOKIE}: ka=open",
-        "${Header.DROP_HEADERS}: ${Header.CHARSET},${Header.CLIENT_TYPE}",
-        "${Header.NO_COMMON_PARAMS}: ${Param.OAID}",
-    )
-    @POST("/c/c/post/add")
-    @FormUrlEncoded
-    fun addPostFlow(
-        @Field("content") content: String,
-        @Field("fid") forumId: String,
-        @Field("kw") forumName: String,
-        @Field("tbs") tbs: String,
-        @Field("tid") threadId: String,
-        @Field("quote_id") quoteId: String? = null,
-        @Field("repostid") repostId: String? = null,
-        @Field("reply_uid") replyUserId: String = "null",
-        @Field("name_show") nameShow: String? = AccountUtil.getLoginInfo()?.nickname,
-        @Field("anonymous") anonymous: String = "1",
-        @Field("authsid") authsid: String = "null",
-        @Field("barrage_time") barrage_time: String = "0",
-        @Field("can_no_forum") can_no_forum: String = "0",
-        @Field("entrance_type") entrance_type: String = "0",
-        @Field("from_fourm_id") from_fourm_id: String = "null",
-        @Field("is_ad") is_ad: String = "0",
-        @Field("is_addition") is_addition: String? = null,
-        @Field("is_barrage") is_barrage: String? = "0",
-        @Field("is_feedback") is_feedback: String = "0",
-        @Field("is_giftpost") is_giftpost: String? = null,
-        @Field("is_twzhibo_thread") is_twzhibo_thread: String? = null,
-        @Field("new_vcode") new_vcode: String = "1",
-        @Field("post_from") post_from: String = "3",
-        @Field("takephoto_num") takephoto_num: String = "0",
-        @Field("v_fid") v_fid: String = "",
-        @Field("v_fname") v_fname: String = "",
-        @Field("vcode_tag") vcode_tag: String = "12",
-        @Field("_client_version") client_version: String = ClientVersion.TIEBA_V11.version,
-        @retrofit2.http.Header(Header.USER_AGENT) user_agent: String = "bdtb for Android $client_version",
-        @Field("stoken") sToken: String? = AccountUtil.getSToken(),
-        @retrofit2.http.Header("client_user_token") client_user_token: String? = AccountUtil.getUid(),
-    ): Flow<AddPostBean>
-
     @POST("/c/c/post/rmstore")
     @FormUrlEncoded
     @Headers(
@@ -461,28 +419,6 @@ interface OfficialTiebaApi {
         @Field("stoken") stoken: String = AccountUtil.getSToken()!!,
         @retrofit2.http.Header("client_user_token") client_user_token: String? = AccountUtil.getUid(),
     ): Flow<CommonResponse>
-
-    @Headers(
-        "${Header.FORCE_LOGIN}: ${Header.FORCE_LOGIN_TRUE}",
-        "${Header.COOKIE}: ka=open",
-        "${Header.DROP_HEADERS}: ${Header.CHARSET},${Header.CLIENT_TYPE}",
-        "${Header.NO_COMMON_PARAMS}: ${Param.OAID}",
-    )
-    @POST("/c/c/agree/opAgree")
-    @FormUrlEncoded
-    fun agreeFlow(
-        @Field("thread_id") threadId: String,
-        @Field("post_id") postId: String? = null,
-        @Field("op_type") opType: Int = 0,
-        @Field("obj_type") objType: Int = 1,
-        @Field("agree_type") agreeType: Int = 2,
-        @retrofit2.http.Header("client_user_token") client_user_token: String? = AccountUtil.getUid(),
-        @Field("cuid_gid") cuid_gid: String = "",
-        @Field("forum_id") forumId: String = "",
-        @Field("personalized_rec_switch") personalizedRecSwitch: Int = 1,
-        @Field("tbs") tbs: String = AccountUtil.getLoginInfo()!!.tbs,
-        @Field("stoken") stoken: String = AccountUtil.getSToken()!!
-    ): Flow<AgreeBean>
 
     @Headers(
         "${Header.FORCE_LOGIN}: ${Header.FORCE_LOGIN_TRUE}",

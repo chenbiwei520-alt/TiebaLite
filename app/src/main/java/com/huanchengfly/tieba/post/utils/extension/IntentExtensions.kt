@@ -20,10 +20,8 @@ import android.content.ClipData
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import androidx.core.content.IntentCompat
 import com.huanchengfly.tieba.post.R
-import java.io.Serializable
 
 fun Uri.toShareIntent(context: Context, type: String = "image/*", message: String? = null): Intent {
     val uri = this
@@ -50,13 +48,4 @@ fun Uri.toShareIntent(context: Context, type: String = "image/*", message: Strin
 
 inline fun <reified T> Intent.getParcelableExtraCompat(name: String): T? {
     return IntentCompat.getParcelableExtra(this, name, T::class.java)
-}
-
-inline fun <reified T : Serializable> Intent.getSerializableExtraCompat(name: String): T? {
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-        getSerializableExtra(name, T::class.java)
-    } else {
-        @Suppress("DEPRECATION")
-        getSerializableExtra(name) as? T
-    }
 }

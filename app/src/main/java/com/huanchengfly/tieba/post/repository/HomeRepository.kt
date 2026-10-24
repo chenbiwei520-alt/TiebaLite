@@ -60,9 +60,7 @@ class HomeRepository @Inject constructor(
         PagingConfig(pageSize = 30, prefetchDistance = 4, maxSize = 60)
     }
 
-    suspend fun requireAccount(): Account {
-       return AccountUtil.getInstance().currentAccount.first() ?: throw TiebaNotLoggedInException()
-    }
+    suspend fun requireAccount(): Account = AccountUtil.requireAccount()
 
     /**
      * Get current user's liked forums paging source.
@@ -190,7 +188,6 @@ class HomeRepository @Inject constructor(
         private const val TAG = "HomeRepository"
 
         // Map network model to entity
-        @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
         suspend fun List<LikeForum>.mapEntity(uid: Long) = withContext(Dispatchers.Default) {
             val now = System.currentTimeMillis()
             map {

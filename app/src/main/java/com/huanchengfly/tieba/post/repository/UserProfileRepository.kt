@@ -11,7 +11,6 @@ import com.huanchengfly.tieba.post.api.models.protos.Anti
 import com.huanchengfly.tieba.post.api.models.protos.PostInfoList
 import com.huanchengfly.tieba.post.api.models.protos.User
 import com.huanchengfly.tieba.post.api.models.protos.abstractText
-import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaNotLoggedInException
 import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.models.database.UserProfile
 import com.huanchengfly.tieba.post.models.database.dao.UserProfileDao
@@ -61,9 +60,7 @@ class UserProfileRepository @Inject constructor(
         scope.launch { localDataSource.cleanUpExpired() }
     }
 
-    private suspend fun requireTBS(): String {
-        return AccountUtil.getInstance().currentAccount.first()?.tbs ?: throw TiebaNotLoggedInException()
-    }
+    private suspend fun requireTBS(): String = AccountUtil.requireTBS()
 
     /**
      * Load user threads or posts.

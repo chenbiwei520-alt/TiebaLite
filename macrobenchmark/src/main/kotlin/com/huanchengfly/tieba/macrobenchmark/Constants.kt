@@ -1,6 +1,6 @@
 package com.huanchengfly.tieba.macrobenchmark
 
-const val TARGET_PACKAGE = "com.huanchengfly.tieba.post.benchmark"
+const val TARGET_PACKAGE = "com.Jeaceny.tieba.post.benchmark"
 const val DEFAULT_ITERATIONS = 3
 
 // Keep sync with MacrobenchmarkConstant.kt in app

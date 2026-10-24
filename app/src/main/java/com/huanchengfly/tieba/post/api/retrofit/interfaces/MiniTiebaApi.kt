@@ -1,6 +1,5 @@
 package com.huanchengfly.tieba.post.api.retrofit.interfaces
 
-import android.text.TextUtils
 import com.huanchengfly.tieba.post.App.ScreenInfo
 import com.huanchengfly.tieba.post.api.Header
 import com.huanchengfly.tieba.post.api.getScreenHeight
@@ -183,40 +182,6 @@ interface MiniTiebaApi {
         @Field("topic") topic: String = "0"
     ): Flow<ForumRecommend>
 
-    @POST("/c/f/frs/page")
-    @FormUrlEncoded
-    fun forumPage(
-        @Field("kw") forumName: String,
-        @Field("pn") page: Int = 1,
-        @Field("sort_type") sort_type: Int,
-        @Field("cid") goodClassifyId: String? = null,
-        @Field("is_good") is_good: String? = if (TextUtils.isEmpty(goodClassifyId)) null else "1",
-        @Field("q_type") q_type: String = "2",
-        @Field("st_type") st_type: String = "tb_forumlist",
-        @Field("with_group") with_group: String = "0",
-        @Field("rn") rn: String = "20",
-        @Field("scr_dip") scr_dip: String = ScreenInfo.DENSITY.toString(),
-        @Field("scr_h") scr_h: String = getScreenHeight().toString(),
-        @Field("scr_w") scr_w: String = getScreenWidth().toString()
-    ): Call<ForumPageBean>
-
-    @POST("/c/f/frs/page")
-    @FormUrlEncoded
-    fun forumPageAsync(
-        @Field("kw") forumName: String,
-        @Field("pn") page: Int = 1,
-        @Field("sort_type") sort_type: Int,
-        @Field("cid") goodClassifyId: String? = null,
-        @Field("is_good") is_good: String? = if (TextUtils.isEmpty(goodClassifyId)) null else "1",
-        @Field("q_type") q_type: String = "2",
-        @Field("st_type") st_type: String = "tb_forumlist",
-        @Field("with_group") with_group: String = "0",
-        @Field("rn") rn: String = "20",
-        @Field("scr_dip") scr_dip: String = ScreenInfo.DENSITY.toString(),
-        @Field("scr_h") scr_h: String = getScreenHeight().toString(),
-        @Field("scr_w") scr_w: String = getScreenWidth().toString()
-    ): Deferred<ApiResult<ForumPageBean>>
-
     @POST("/c/f/pb/floor")
     @FormUrlEncoded
     fun floor(
@@ -293,13 +258,6 @@ interface MiniTiebaApi {
         @Field("need_post_count") need_post_count: Int = 1
     ): Call<ProfileBean>
 
-    @POST("/c/u/user/profile")
-    @FormUrlEncoded
-    fun profileFlow(
-        @Field("uid") uid: String,
-        @Field("need_post_count") need_post_count: Int = 1
-    ): Flow<ProfileBean>
-
     @Headers("${Header.FORCE_LOGIN}: ${Header.FORCE_LOGIN_TRUE}")
     @POST("/c/c/forum/unlike")
     @FormUrlEncoded
@@ -308,15 +266,6 @@ interface MiniTiebaApi {
         @Field("kw") forumName: String,
         @Field("tbs") tbs: String? = AccountUtil.getLoginInfo()?.tbs
     ): Call<CommonResponse>
-
-    @Headers("${Header.FORCE_LOGIN}: ${Header.FORCE_LOGIN_TRUE}")
-    @POST("/c/c/forum/unlike")
-    @FormUrlEncoded
-    fun unlikeForumFlow(
-        @Field("fid") forumId: String,
-        @Field("kw") forumName: String,
-        @Field("tbs") tbs: String? = AccountUtil.getLoginInfo()?.tbs
-    ): Flow<CommonResponse>
 
     @Headers("${Header.FORCE_LOGIN}: ${Header.FORCE_LOGIN_TRUE}")
     @POST("/c/c/forum/like")
@@ -343,14 +292,6 @@ interface MiniTiebaApi {
         @Field("kw") forumName: String,
         @Field("tbs") tbs: String
     ): Deferred<ApiResult<SignResultBean>>
-
-    @Headers("${Header.FORCE_LOGIN}: ${Header.FORCE_LOGIN_TRUE}")
-    @POST("/c/c/forum/sign")
-    @FormUrlEncoded
-    fun signFlow(
-        @Field("kw") forumName: String,
-        @Field("tbs") tbs: String
-    ): Flow<SignResultBean>
 
     @Headers("${Header.FORCE_LOGIN}: ${Header.FORCE_LOGIN_TRUE}")
     @POST("/c/c/bawu/delthread")
@@ -410,16 +351,6 @@ interface MiniTiebaApi {
         @retrofit2.http.Header(Header.USER_AGENT) user_agent: String = "bdtb for Android $client_version",
         @Query("cuid_gid") cuid_gid: String = ""
     ): Call<SearchUserBean>
-
-    @Headers("${Header.FORCE_LOGIN}: ${Header.FORCE_LOGIN_TRUE}")
-    @POST("/c/f/ueg/checkjubao")
-    @FormUrlEncoded
-    fun checkReport(
-        @Field("category") category: String,
-        @FieldMap reportParam: Map<String, String>,
-        @Field("stoken") stoken: String? = AccountUtil.getLoginInfo()
-            ?.sToken
-    ): Call<CheckReportBean>
 
     @POST("/c/c/thread/add")
     @FormUrlEncoded

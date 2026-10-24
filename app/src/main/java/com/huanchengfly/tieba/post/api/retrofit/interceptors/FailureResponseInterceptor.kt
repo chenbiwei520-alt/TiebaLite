@@ -35,7 +35,7 @@ object FailureResponseInterceptor : Interceptor {
             }.getOrNull()
         } ?: return response
 
-        if (commonResponse.errorCode != null && commonResponse.errorCode != 0) {
+        if (commonResponse.errorCode != 0) {
             throw TiebaApiException(commonResponse)
         }
         return response

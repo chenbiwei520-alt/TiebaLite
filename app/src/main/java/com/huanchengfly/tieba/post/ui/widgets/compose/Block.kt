@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.theme.ProvideContentColorTextStyle
@@ -46,4 +47,14 @@ inline fun BlockableContent(
     } else if (!hideBlockedContent) {
         Box(modifier = modifier, content = blockedTip)
     }
+}
+
+@Composable
+fun ThreadBlockedTip(verticalPadding: Dp = 4.dp) {
+    BlockTip(
+        modifier = Modifier.padding(horizontal = CardHorizontalSpacing, vertical = verticalPadding),
+        text = {
+            Text(text = stringResource(id = R.string.tip_blocked_thread))
+        }
+    )
 }

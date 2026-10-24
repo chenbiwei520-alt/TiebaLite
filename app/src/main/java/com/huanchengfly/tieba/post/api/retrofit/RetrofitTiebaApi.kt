@@ -161,7 +161,7 @@ object RetrofitTiebaApi {
                 Header.USER_AGENT to { "bdtb for Android 7.2.0.0" },
                 Header.CUID to { UIDUtil.finalCUID },
                 Header.CUID_GALAXY2 to { UIDUtil.finalCUID },
-                "client_logid" to { "$initTime" }
+                Header.CLIENT_LOG_ID to { "$initTime" }
             ),
             defaultCommonParamInterceptor + CommonParamInterceptor(
                 Param.CUID to { UIDUtil.finalCUID },
@@ -186,7 +186,7 @@ object RetrofitTiebaApi {
                 Header.CUID_GALAXY3 to { UIDUtil.getAid() },
                 Header.CLIENT_TYPE to { "2" },
                 Header.CHARSET to { "UTF-8" },
-                "client_logid" to { "$initTime" }
+                Header.CLIENT_LOG_ID to { "$initTime" }
             ),
             defaultCommonParamInterceptor + CommonParamInterceptor(
                 Param.ACTIVE_TIMESTAMP to { ClientUtils.activeTimestamp.toString() },

@@ -9,7 +9,6 @@ import com.huanchengfly.tieba.post.api.models.protos.personalized.DislikeReason
 import com.huanchengfly.tieba.post.api.models.protos.personalized.PersonalizedResponseData
 import com.huanchengfly.tieba.post.api.models.protos.userLike.ConcernData
 import com.huanchengfly.tieba.post.api.models.protos.userLike.UserLikeResponseData
-import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaNotLoggedInException
 import com.huanchengfly.tieba.post.arch.wrapImmutable
 import com.huanchengfly.tieba.post.di.ApplicationScope
 import com.huanchengfly.tieba.post.repository.source.local.ExploreLocalDataSource
@@ -60,9 +59,7 @@ class ExploreRepository @Inject constructor(
 
     private val blockSettings = settingsRepository.blockSettings
 
-    private suspend fun requireUid(): Long {
-        return AccountUtil.getInstance().currentAccount.first()?.uid ?: throw TiebaNotLoggedInException()
-    }
+    private suspend fun requireUid(): Long = AccountUtil.requireUid()
 
     /**
      * [Dislike] 缓存池

@@ -738,128 +738,6 @@ fun CollapsingTopAppBar(
 }
 
 /**
- * A two-rows top app bar that is designed to be called by the Large and Medium top app bar
- * composables.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TwoRowsTopAppBar(
-    modifier: Modifier = Modifier,
-    title: @Composable () -> Unit,
-    titleTextStyle: TextStyle = MaterialTheme.typography.titleLarge,
-    smallTitle: @Composable () -> Unit,
-    titleHorizontalAlignment: Alignment.Horizontal = Alignment.Start,
-    navigationIcon: @Composable () -> Unit,
-    actions: @Composable RowScope.() -> Unit = {},
-    collapsedHeight: Dp = TopAppBarDefaults.LargeAppBarCollapsedHeight,
-    expandedHeight: Dp = TopAppBarDefaults.LargeAppBarExpandedHeight,
-    windowInsets: WindowInsets = TopAppBarDefaults.windowInsets,
-    colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
-    scrollBehavior: TopAppBarScrollBehavior? = null,
-    content: (@Composable ColumnScope.() -> Unit)? = null,
-) {
-    require(collapsedHeight.isSpecified && collapsedHeight.isFinite) {
-        "The collapsedHeight is expected to be specified and finite"
-    }
-    require(expandedHeight.isSpecified && expandedHeight.isFinite) {
-        "The expandedHeight is expected to be specified and finite"
-    }
-    require(expandedHeight >= collapsedHeight) {
-        "The expandedHeight is expected to be greater or equal to the collapsedHeight"
-    }
-    val titleBottomPaddingPx = 0
-
-    // Obtain the container Color from the TopAppBarColors using the `collapsedFraction`, as the
-    // bottom part of this TwoRowsTopAppBar changes color at the same rate the app bar expands
-    // or collapse.
-    // This will potentially animate or interpolate a transition between the container color and
-    // the container's scrolled color according to the app bar's scroll state.
-    val colorTransitionFraction = { scrollBehavior?.state?.collapsedFraction ?: 0f }
-    val appBarContainerColor = { colors.containerColor(colorTransitionFraction()) }
-
-    // Wrap the given actions in a Row.
-    val actionsRow =
-        @Composable {
-            Row(
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-                content = actions,
-            )
-        }
-    val topTitleAlpha = { TopTitleAlphaEasing.transform(colorTransitionFraction()) }
-    val bottomTitleAlpha = { 1f - colorTransitionFraction() }
-    // Hide the top row title semantics when its alpha value goes below 0.5 threshold.
-    // Hide the bottom row title semantics when the top title semantics are active.
-    val hideTopRowSemantics by
-        remember(colorTransitionFraction) {
-            derivedStateOf { colorTransitionFraction() < 0.5f }
-        }
-    val hideBottomRowSemantics = !hideTopRowSemantics
-
-    Box(
-        modifier =
-            modifier
-                .drawBehind { drawRect(color = appBarContainerColor()) }
-                .semantics { isTraversalGroup = true }
-                .pointerInput(Unit) {}
-    ) {
-        Column {
-            TopAppBarLayout(
-                modifier =
-                    Modifier.windowInsetsPadding(windowInsets)
-                        // clip after padding so we don't show the title over the inset area
-                        .clipToBounds(),
-                scrolledOffset = { 0f },
-                navigationIconContentColor = colors.navigationIconContentColor,
-                titleContentColor = colors.titleContentColor,
-                actionIconContentColor = colors.actionIconContentColor,
-                title = smallTitle,
-                titleTextStyle = titleTextStyle,
-                titleAlpha = topTitleAlpha,
-                titleVerticalArrangement = Arrangement.Center,
-                titleHorizontalAlignment = titleHorizontalAlignment,
-                titleBottomPadding = 0,
-                hideTitleSemantics = hideTopRowSemantics,
-                navigationIcon = navigationIcon,
-                actions = actionsRow,
-                height = collapsedHeight,
-            )
-            TopAppBarLayout(
-                modifier =
-                    Modifier
-                        // only apply the horizontal sides of the window insets padding, since
-                        // the top padding will always be applied by the layout above
-                        .windowInsetsPadding(windowInsets.only(WindowInsetsSides.Horizontal))
-                        .clipToBounds()
-                        .adjustHeightOffsetLimit(scrollBehavior),
-                scrolledOffset = { scrollBehavior?.state?.heightOffset ?: 0f },
-                navigationIconContentColor = colors.navigationIconContentColor,
-                titleContentColor = colors.titleContentColor,
-                actionIconContentColor = colors.actionIconContentColor,
-                title = title,
-                titleTextStyle = titleTextStyle,
-                titleAlpha = bottomTitleAlpha,
-                titleVerticalArrangement = Arrangement.Bottom,
-                titleHorizontalAlignment = titleHorizontalAlignment,
-                titleBottomPadding = titleBottomPaddingPx,
-                hideTitleSemantics = hideBottomRowSemantics,
-                navigationIcon = {},
-                actions = {},
-                height = expandedHeight - collapsedHeight,
-            )
-
-            if (content != null) {
-                Column (
-                    modifier = Modifier.windowInsetsPadding(windowInsets.only(WindowInsetsSides.Horizontal)),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    content = content
-                )
-            }
-        }
-    }
-}
-
-/**
  * The base [Layout] for all top app bars. This function lays out a top app bar navigation icon
  * (leading icon), a title (header), and action icons (trailing icons). Note that the navigation and
  * the actions are optional.
@@ -880,7 +758,7 @@ fun TwoRowsTopAppBar(
  * @param titleHorizontalAlignment the title's horizontal alignment
  * @param titleBottomPadding the title's bottom padding
  * @param hideTitleSemantics hides the title node from the semantic tree. Apply this boolean when
- *   this layout is part of a [TwoRowsTopAppBar] to hide the title's semantics from accessibility
+ *   this layout is part of a two-rows top app bar to hide the title's semantics from accessibility
  *   services. This is needed to avoid having multiple titles visible to accessibility services at
  *   the same time, when animating between collapsed / expanded states.
  * @param navigationIcon a navigation icon [Composable]
