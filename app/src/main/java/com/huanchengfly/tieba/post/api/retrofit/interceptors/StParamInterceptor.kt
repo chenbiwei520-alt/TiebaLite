@@ -10,7 +10,7 @@ import okhttp3.Response
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.roundToInt
 
-class StParamInterceptor(private val method: Boolean = false) : Interceptor {
+class StParamInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         var headers = request.headers
@@ -45,7 +45,7 @@ class StParamInterceptor(private val method: Boolean = false) : Interceptor {
         var stSize: String? = null
         if (num !in 100..120) {
             stErrorNums = "1"
-            stMethod = if (method) "2" else "1"
+            stMethod = "1"
             stMode = "1"
             stTimesNum = "1"
             stTime = num.toString()

@@ -610,27 +610,28 @@ object MixedTiebaApiImpl : ITiebaApi {
     override fun submitDislikeFlow(dislikeBean: DislikeBean): Flow<CommonResponse> =
         RetrofitTiebaApi.OFFICIAL_TIEBA_API.submitDislikeFlow(listOf(dislikeBean).toJson())
 
-    override fun follow(
-        portrait: String, tbs: String
-    ): Call<CommonResponse> = RetrofitTiebaApi.WEB_TIEBA_API.follow(
+    private fun buildFollowUrl(portrait: String, tbs: String, op: String) =
         "https://tieba.baidu.com/i/?portrait=${
             URLEncoder.encode(
                 portrait,
                 "UTF-8"
             )
-        }&cuid=&auth=&uid=&ssid=&from=&uid=&pu=&bd_page_type=2&auth=&originid=&mo_device=1&tbs=${tbs}&action=follow&op=follow"
+        }&cuid=&auth=&uid=&ssid=&from=&uid=&pu=&bd_page_type=2&auth=&originid=&mo_device=1&tbs=${tbs}&action=follow&op=$op"
+
+    private fun buildWebReplyReferer(threadId: String, pn: String) =
+        "https://tieba.baidu.com/p/$threadId?lp=5028&mo_device=1&is_jingpost=0&pn=$pn&"
+
+    override fun follow(
+        portrait: String, tbs: String
+    ): Call<CommonResponse> = RetrofitTiebaApi.WEB_TIEBA_API.follow(
+        buildFollowUrl(portrait, tbs, "follow")
     )
 
     override fun unfollow(
         portrait: String,
         tbs: String
     ): Call<CommonResponse> = RetrofitTiebaApi.WEB_TIEBA_API.follow(
-        "https://tieba.baidu.com/i/?portrait=${
-            URLEncoder.encode(
-                portrait,
-                "UTF-8"
-            )
-        }&cuid=&auth=&uid=&ssid=&from=&uid=&pu=&bd_page_type=2&auth=&originid=&mo_device=1&tbs=${tbs}&action=follow&op=unfollow"
+        buildFollowUrl(portrait, tbs, "unfollow")
     )
 
     override fun followFlow(
@@ -783,7 +784,7 @@ object MixedTiebaApiImpl : ITiebaApi {
             threadId = threadId,
             nickName = nickName,
             bsk = bsk,
-            referer = "https://tieba.baidu.com/p/$threadId?lp=5028&mo_device=1&is_jingpost=0&pn=$pn&"
+            referer = buildWebReplyReferer(threadId, pn)
         )
 
     override fun webReply(
@@ -810,7 +811,7 @@ object MixedTiebaApiImpl : ITiebaApi {
             postId = postId,
             floor = floor,
             bsk = bsk,
-            referer = "https://tieba.baidu.com/p/$threadId?lp=5028&mo_device=1&is_jingpost=0&pn=$pn&"
+            referer = buildWebReplyReferer(threadId, pn)
         )
 
     override fun webReply(
@@ -839,7 +840,7 @@ object MixedTiebaApiImpl : ITiebaApi {
             replyPostId = replyPostId,
             floor = floor,
             bsk = bsk,
-            referer = "https://tieba.baidu.com/p/$threadId?lp=5028&mo_device=1&is_jingpost=0&pn=$pn&"
+            referer = buildWebReplyReferer(threadId, pn)
         )
 
     override fun webReplyAsync(
@@ -862,7 +863,7 @@ object MixedTiebaApiImpl : ITiebaApi {
             threadId = threadId,
             nickName = nickName,
             bsk = bsk,
-            referer = "https://tieba.baidu.com/p/$threadId?lp=5028&mo_device=1&is_jingpost=0&pn=$pn&"
+            referer = buildWebReplyReferer(threadId, pn)
         )
 
     override fun webReplyAsync(
@@ -889,7 +890,7 @@ object MixedTiebaApiImpl : ITiebaApi {
             postId = postId,
             floor = floor,
             bsk = bsk,
-            referer = "https://tieba.baidu.com/p/$threadId?lp=5028&mo_device=1&is_jingpost=0&pn=$pn&"
+            referer = buildWebReplyReferer(threadId, pn)
         )
 
     override fun webReplyAsync(
@@ -918,7 +919,7 @@ object MixedTiebaApiImpl : ITiebaApi {
             replyPostId = replyPostId,
             floor = floor,
             bsk = bsk,
-            referer = "https://tieba.baidu.com/p/$threadId?lp=5028&mo_device=1&is_jingpost=0&pn=$pn&"
+            referer = buildWebReplyReferer(threadId, pn)
         )
 
     override fun checkReportPost(postId: String): Call<CheckReportBean> =

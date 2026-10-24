@@ -50,7 +50,8 @@ import com.huanchengfly.tieba.post.ui.page.ProvideNavigator
 import com.huanchengfly.tieba.post.ui.page.hottopic.detail.TopicDetailViewModel.Companion.feedId
 import com.huanchengfly.tieba.post.ui.page.main.explore.ConsumeThreadPageResult
 import com.huanchengfly.tieba.post.ui.page.main.explore.createThreadClickListeners
-import com.huanchengfly.tieba.post.ui.page.main.explore.personalized.ThreadBlockedTip
+import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
+import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadBlockedTip
 import com.huanchengfly.tieba.post.ui.page.thread.ThreadLikeUiEvent
 import com.huanchengfly.tieba.post.ui.utils.rememberScrollOrientationConnection
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
@@ -218,7 +219,7 @@ fun TopicDetailPage(
                             ) { index, item ->
                                 BlockableContent(
                                     blocked = item.blocked,
-                                    blockedTip = ThreadBlockedTip,
+                                    blockedTip = { ThreadBlockedTip() },
                                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                                     hideBlockedContent = hideBlockedContent
                                 ) {

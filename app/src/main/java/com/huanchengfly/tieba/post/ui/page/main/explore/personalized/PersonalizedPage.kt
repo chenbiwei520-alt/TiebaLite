@@ -5,7 +5,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -49,10 +48,9 @@ import com.huanchengfly.tieba.post.ui.page.Destination
 import com.huanchengfly.tieba.post.ui.page.main.explore.ConsumeThreadPageResult
 import com.huanchengfly.tieba.post.ui.page.main.explore.LaunchedFabStateEffect
 import com.huanchengfly.tieba.post.ui.page.main.explore.createThreadClickListeners
-import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
-import com.huanchengfly.tieba.post.ui.widgets.compose.CardHorizontalSpacing
 import top.yukonga.miuix.kmp.basic.Card
+import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadBlockedTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.StrongBox
@@ -63,12 +61,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.trace
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-val ThreadBlockedTip: @Composable BoxScope.() -> Unit = {
-    BlockTip(modifier = Modifier.padding(horizontal = CardHorizontalSpacing, vertical = 4.dp)) {
-        Text(text = stringResource(id = R.string.tip_blocked_thread))
-    }
-}
 
 @Composable
 fun PersonalizedPage(
@@ -157,7 +149,7 @@ fun PersonalizedPage(
                     trace(MacrobenchmarkConstant.TRACE_FEED_CARD) {
                         BlockableContent(
                             blocked = thread.blocked,
-                            blockedTip = ThreadBlockedTip,
+                            blockedTip = { ThreadBlockedTip() },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .animateItem(fadeInSpec = null, placementSpec = itemPlacementSpec, fadeOutSpec = null),

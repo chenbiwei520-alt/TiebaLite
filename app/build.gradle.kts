@@ -35,14 +35,15 @@ android {
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.huanchengfly.tieba.post"
+        applicationId = "com.Jeaceny.tieba.post"
         minSdk = libs.versions.minSdk.get().toInt()
         //noinspection OldTargetApi
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 391033
         versionName = "4.0.0 Beta 5.2"
-        // Configure custom runner to set up the Hilt test application
-        testInstrumentationRunner = "$applicationId.TbLiteTestRunner"
+        // Configure custom runner to set up the Hilt test application.
+        // The runner class lives under the namespace, which is independent of applicationId.
+        testInstrumentationRunner = "com.huanchengfly.tieba.post.TbLiteTestRunner"
         vectorDrawables {
             useSupportLibrary = true
         }

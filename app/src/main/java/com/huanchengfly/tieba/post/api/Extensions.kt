@@ -25,16 +25,6 @@ inline fun FormBody.forEach(block: (String, String) -> Unit) {
     }
 }
 
-fun FormBody.raw() =
-    StringBuilder().apply {
-        repeat(size) {
-            if (it != 0) append('&')
-            append(encodedName(it))
-            append('=')
-            append(encodedValue(it))
-        }
-    }.toString()
-
 fun FormBody.sortedEncodedRaw(separator: Boolean = true): String {
     val nameAndValue = mutableListOf<String>()
     repeat(size) {
@@ -100,19 +90,6 @@ fun MyMultipartBody.Part.fileName(): String? {
 
 fun MyMultipartBody.newBuilder(): MyMultipartBody.Builder =
     MyMultipartBody.Builder(boundary).setType(type)
-
-fun MyMultipartBody.sort(): MyMultipartBody {
-    val builder = newBuilder()
-    val fileParts = mutableListOf<MyMultipartBody.Part>()
-    parts.forEach {
-        if (it.fileName() != null) {
-            fileParts.add(it)
-        }
-    }
-    parts.filterNot { it in fileParts }.sortedBy { it.name() }.forEach { builder.addPart(it) }
-    if (fileParts.isNotEmpty()) fileParts.sortedBy { it.fileName() }.forEach { builder.addPart(it) }
-    return builder.build()
-}
 
 fun MyMultipartBody.Part.readString(): String {
     val buffer = Buffer()

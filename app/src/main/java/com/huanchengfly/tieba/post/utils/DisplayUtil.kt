@@ -49,14 +49,6 @@ object DisplayUtil {
     }
 
     /**
-     * 将px值转换为sp值
-     */
-    fun px2sp(context: Context, pxValue: Float): Int {
-        val fontScale = context.resources.displayMetrics.scaledDensity
-        return (pxValue / fontScale + 0.5f).toInt()
-    }
-
-    /**
      * 将sp值转换为px值
      *
      * @throws IllegalStateException 传入了EM值

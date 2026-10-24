@@ -42,24 +42,6 @@ object FileUtil {
     const val FILE_TYPE_AUDIO = 2
     const val FILE_FOLDER = "TiebaLite"
 
-    private fun getDataColumn(
-        context: Context,
-        uri: Uri?,
-        selection: String?,
-        selectionArgs: Array<String>?,
-    ): String? {
-        val column = "_data"
-        val projection = arrayOf(column)
-        context.contentResolver.query(uri!!, projection, selection, selectionArgs, null)
-            .use { cursor ->
-                if (cursor != null && cursor.moveToFirst()) {
-                    val column_index = cursor.getColumnIndexOrThrow(column)
-                    return cursor.getString(column_index)
-                }
-            }
-        return null
-    }
-
     @JvmStatic
     fun getRealPathFromUri(context: Context, contentUri: Uri?): String {
         val proj = arrayOf(MediaStore.Images.Media.DATA)
@@ -135,19 +117,6 @@ object FileUtil {
             val ins = context.assets.open(fileName)
             BufferedReader(InputStreamReader(ins, StandardCharsets.UTF_8)).use { reader ->
                 return reader.readText()
-            }
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-        return null
-    }
-
-    @JvmStatic
-    @WorkerThread
-    fun readFile(file: File): String? {
-        try {
-            file.bufferedReader(StandardCharsets.UTF_8).use { ins ->
-                return ins.readText()
             }
         } catch (e: IOException) {
             e.printStackTrace()

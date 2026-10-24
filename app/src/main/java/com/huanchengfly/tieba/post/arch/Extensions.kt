@@ -133,30 +133,6 @@ fun <E: UiEvent> Flow<E>.collectCommonUiEventWithLifecycle(
 @Throws(NoConnectivityException::class)
 suspend inline fun <T> Flow<T>.firstOrThrow(): T = firstOrNull() ?: throw NoConnectivityException()
 
-@Composable
-inline fun <reified Event : UiEvent> Flow<UiEvent>.onEvent(
-    noinline listener: suspend (Event) -> Unit
-) {
-    val coroutineScope = rememberCoroutineScope()
-    DisposableEffect(key1 = listener, key2 = this) {
-        with(coroutineScope) {
-            val job = launch {
-                this@onEvent
-                    .filterIsInstance<Event>()
-                    .cancellable()
-                    .flowOn(Dispatchers.IO)
-                    .collect {
-                        launch {
-                            listener(it)
-                        }
-                    }
-            }
-
-            onDispose { job.cancel() }
-        }
-    }
-}
-
 @OptIn(InternalComposeApi::class)
 @Composable
 inline fun <reified Event : UiEvent> BaseViewModel<*, *, *, *>.onEvent(

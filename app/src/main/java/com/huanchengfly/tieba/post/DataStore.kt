@@ -9,27 +9,15 @@ import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.huanchengfly.tieba.post.App.Companion.AppBackgroundScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-
-fun Flow<Preferences>.distinctUntilChangedByKeys(vararg keys: Preferences.Key<*>): Flow<Preferences> {
-    if (keys.size == 1) return this.distinctUntilChangedBy { it[keys.first()] }
-
-    return this.distinctUntilChangedBy { data ->
-        val values = arrayOfNulls<Any?>(keys.size)
-        keys.forEachIndexed { i, key -> values[i] = data[key] ?: key }
-        values.contentHashCode()
-    }
-}
 
 fun<T> DataStore<Preferences>.asyncEdit(key: Preferences.Key<T>, value: T?) {
     AppBackgroundScope.launch {
@@ -61,10 +49,6 @@ fun DataStore<Preferences>.putBoolean(key: String, value: Boolean?) {
     asyncEdit(booleanPreferencesKey(key), value)
 }
 
-fun DataStore<Preferences>.putFloat(key: String, value: Float) {
-    asyncEdit(floatPreferencesKey(key), value)
-}
-
 fun DataStore<Preferences>.putInt(key: String, value: Int) {
     asyncEdit(intPreferencesKey(key), value)
 }
@@ -75,22 +59,6 @@ fun DataStore<Preferences>.putLong(key: String, value: Long) {
 
 fun DataStore<Preferences>.getInt(key: String, defaultValue: Int): Int {
     return blockGet(intPreferencesKey(key), defaultValue)
-}
-
-fun DataStore<Preferences>.getString(key: String, defaultValue: String): String {
-    return blockGet(stringPreferencesKey(key), defaultValue)
-}
-
-fun DataStore<Preferences>.getBoolean(key: String, defaultValue: Boolean): Boolean {
-    return blockGet(booleanPreferencesKey(key), defaultValue)
-}
-
-fun DataStore<Preferences>.getFloat(key: String, defaultValue: Float): Float {
-    return blockGet(floatPreferencesKey(key), defaultValue)
-}
-
-fun DataStore<Preferences>.getLong(key: String, defaultValue: Long): Long {
-    return blockGet(longPreferencesKey(key), defaultValue)
 }
 
 fun Preferences.getColor(key: String): Color? = this[intPreferencesKey(key)]?.let { Color(it) }

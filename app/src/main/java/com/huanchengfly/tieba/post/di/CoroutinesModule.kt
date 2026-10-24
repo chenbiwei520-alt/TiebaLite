@@ -28,10 +28,6 @@ import kotlinx.coroutines.SupervisorJob
 import javax.inject.Qualifier
 import javax.inject.Singleton
 
-@Qualifier
-@Retention(AnnotationRetention.RUNTIME)
-annotation class IoDispatcher
-
 @Retention(AnnotationRetention.RUNTIME)
 @Qualifier
 annotation class DefaultDispatcher
@@ -43,10 +39,6 @@ annotation class ApplicationScope
 @Module
 @InstallIn(SingletonComponent::class)
 object CoroutinesModule {
-
-    @Provides
-    @IoDispatcher
-    fun providesIODispatcher(): CoroutineDispatcher = Dispatchers.IO
 
     @Provides
     @DefaultDispatcher
@@ -63,9 +55,6 @@ object CoroutinesModule {
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface CoroutinesEntryPoint {
-
-    @IoDispatcher
-    fun ioDispatcher(): CoroutineDispatcher
 
     @DefaultDispatcher
     fun defaultDispatcher(): CoroutineDispatcher

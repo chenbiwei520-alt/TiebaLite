@@ -263,7 +263,7 @@
             android:excludeFromRecents="true"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.huanchengfly.tieba.post.action.OKSIGN" />
+                <action android:name="com.Jeaceny.tieba.post.action.OKSIGN" />
 
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>

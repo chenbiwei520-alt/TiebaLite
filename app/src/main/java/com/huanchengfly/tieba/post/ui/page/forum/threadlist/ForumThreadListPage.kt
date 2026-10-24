@@ -2,7 +2,6 @@ package com.huanchengfly.tieba.post.ui.page.forum.threadlist
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -38,7 +37,6 @@ import com.huanchengfly.tieba.post.ui.page.LocalNavController
 import com.huanchengfly.tieba.post.ui.page.forum.threadlist.ForumThreadListViewModel.Companion.ForumVMFactory
 import com.huanchengfly.tieba.post.ui.page.main.explore.ConsumeThreadPageResult
 import com.huanchengfly.tieba.post.ui.page.main.explore.ThreadClickListeners
-import com.huanchengfly.tieba.post.ui.widgets.compose.BlockTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
@@ -48,6 +46,7 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadBlockedTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadContentType
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import java.util.Objects
@@ -97,15 +96,6 @@ private fun TopThreadItem(
             modifier = Modifier.weight(1f),
         )
     }
-}
-
-private val ThreadBlockedTip: @Composable BoxScope.() -> Unit = {
-    BlockTip(
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-        text = {
-            Text(text = stringResource(id = R.string.tip_blocked_thread))
-        }
-    )
 }
 
 @Composable
@@ -239,7 +229,7 @@ fun LazyListScope.forumThreadList(
         } else {
             BlockableContent(
                 blocked = thread.blocked,
-                blockedTip = ThreadBlockedTip,
+                blockedTip = { ThreadBlockedTip(verticalPadding = 8.dp) },
                 hideBlockedContent = hideBlocked
             ) {
                 // One Miuix group card per feed item, no divider lines

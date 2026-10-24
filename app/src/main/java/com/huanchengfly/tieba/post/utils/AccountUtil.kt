@@ -58,6 +58,13 @@ class AccountUtil private constructor(context: Context) {
 
         fun getLoginInfo(): Account? = runBlocking { getInstance().currentAccount.first() }
 
+        suspend fun requireAccount(): Account =
+            getInstance().currentAccount.first() ?: throw TiebaNotLoggedInException()
+
+        suspend fun requireTBS(): String = requireAccount().tbs
+
+        suspend fun requireUid(): Long = requireAccount().uid
+
         fun isLoggedIn(): Boolean = getLoginInfo() != null
 
         fun getSToken(): String? = getLoginInfo()?.sToken
@@ -115,7 +122,7 @@ class AccountUtil private constructor(context: Context) {
         .shareInBackground()
 
     suspend fun updateSigningAccount(): Account {
-        val account = currentAccount.first() ?: throw TiebaNotLoggedInException()
+        val account = requireAccount()
         val lastUpdate = timeDao.get(account.uid, TimestampDao.TYPE_SIGN_INFO_UPDATED) ?: -1
         val duration = System.currentTimeMillis() - (lastUpdate + FETCH_EXPIRE_MILL)
         if (duration > 0) {
@@ -172,7 +179,7 @@ class AccountUtil private constructor(context: Context) {
      * Refresh user profile
      * */
     suspend fun refreshCurrent(force: Boolean = false): Account {
-        val account = currentAccount.first() ?: throw TiebaNotLoggedInException()
+        val account = requireAccount()
         val duration = System.currentTimeMillis() - (account.lastUpdate + UPDATE_EXPIRE_MILL)
         // not force-refresh && not expire
         if (!force && duration < 0) {

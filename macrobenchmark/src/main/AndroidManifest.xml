@@ -3,6 +3,6 @@
     <!-- Requesting legacy storage is needed to be able to write to additionalTestOutputDir on API 29 -->
     <application android:requestLegacyExternalStorage="true" />
     <queries>
-        <package android:name="com.huanchengfly.tieba.post.benchmark" />
+        <package android:name="com.Jeaceny.tieba.post.benchmark" />
     </queries>
 </manifest>

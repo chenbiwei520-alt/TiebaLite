@@ -64,14 +64,14 @@ class ShortcutInitializer : Initializer<Unit>{
          *
          * @since 3.8.1 α
          * */
-        private const val ACTION_OKSIGN = "com.huanchengfly.tieba.post.action.OKSIGN"
+        private const val ACTION_OKSIGN = "com.Jeaceny.tieba.post.action.OKSIGN"
 
         /**
          * Intent Extra: Shortcut ID.
          *
          * @since 4.0.0
          * */
-        private const val EXTRA_SHORTCUT_ID = "com.huanchengfly.tieba.post.SHORTCUT_ID"
+        private const val EXTRA_SHORTCUT_ID = "com.Jeaceny.tieba.post.SHORTCUT_ID"
 
         /**
          * Shortcut ID: OK Sign.

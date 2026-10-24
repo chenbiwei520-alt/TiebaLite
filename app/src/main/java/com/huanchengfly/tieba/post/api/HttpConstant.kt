@@ -3,20 +3,12 @@ package com.huanchengfly.tieba.post.api
 
 object Method {
     const val GET = "GET"
-    const val POST = "POST"
-    const val PATCH = "PATCH"
-    const val PUT = "PUT"
-    const val DELETE = "DELETE"
-    const val OPTION = "OPTION"
 }
 
 object Error {
     const val ERROR_NETWORK = 10
     const val ERROR_UNKNOWN = -1
-    const val ERROR_PARSE = -2
     const val ERROR_NOT_LOGGED_IN = 11
-    const val ERROR_LOGGED_IN_EXPIRED = 12
-    const val ERROR_UPDATE_NOT_ENABLE = 100
     const val ERROR_ACCOUNT_BLOCKED = 220012
     const val ERROR_POST_NOMORE = 350006
 }

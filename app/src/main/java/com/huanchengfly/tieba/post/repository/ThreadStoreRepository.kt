@@ -1,7 +1,6 @@
 package com.huanchengfly.tieba.post.repository
 
 import com.huanchengfly.tieba.post.api.models.ThreadStoreBean.ThreadStoreInfo
-import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaNotLoggedInException
 import com.huanchengfly.tieba.post.repository.source.network.ThreadStoreNetworkDataSource
 import com.huanchengfly.tieba.post.repository.user.SettingsRepository
 import com.huanchengfly.tieba.post.ui.models.Author
@@ -25,9 +24,7 @@ class ThreadStoreRepository @Inject constructor(
 
     private val networkDataSource = ThreadStoreNetworkDataSource
 
-    private suspend fun requireTBS(): String {
-        return AccountUtil.getInstance().currentAccount.first()?.tbs ?: throw TiebaNotLoggedInException()
-    }
+    private suspend fun requireTBS(): String = AccountUtil.requireTBS()
 
     /**
      * 加载收藏的帖子
