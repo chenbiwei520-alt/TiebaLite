@@ -32,8 +32,8 @@ import com.huanchengfly.tieba.post.arch.onGlobalEvent
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.widgets.compose.PbContentText
-import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
 import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
+import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.models.Author
 import com.huanchengfly.tieba.post.ui.models.SimpleForum
 import com.huanchengfly.tieba.post.ui.models.ThreadItem
@@ -156,7 +156,8 @@ private fun UserThread(
             ) {
                 Surface(
                     onClick = { onClickForum(thread) },
-                    shape = SquircleShape(SquircleCornerRadius.ExtraSmall),
+                    // Half the enclosing card's radius, so the chip's corners stay concentric with it.
+                    shape = SquircleShape(Sizes.CornerRadius / 2),
                     color = MaterialTheme.colorScheme.secondaryContainer,
                 ) {
                     Text(

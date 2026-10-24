@@ -53,6 +53,7 @@ import com.huanchengfly.tieba.post.ui.page.settings.blocklist.KeywordBlockListPa
 import com.huanchengfly.tieba.post.ui.page.settings.blocklist.UserBlockListPage
 import com.huanchengfly.tieba.post.ui.page.settings.theme.AppFontPage
 import com.huanchengfly.tieba.post.ui.widgets.compose.AccountNavIcon
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberGestureAwareInsets
 import com.huanchengfly.tieba.post.utils.LocalAccount
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.Icon
@@ -231,6 +232,7 @@ fun TabletSettingsScreen(
                 val paneBarColor = if (paneBackdrop != null) Color.Transparent else colors.surface
                 MiuixScaffold(
                     modifier = Modifier.width(leftWidth).fillMaxHeight(),
+                    contentWindowInsets = rememberGestureAwareInsets(),
                     topBar = {
                         MiuixProgressiveBlurBar(
                             backdrop = paneBackdrop,

@@ -54,11 +54,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -108,7 +106,6 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ConfirmDialog
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorScreen
-import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
 import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
 import com.huanchengfly.tieba.post.ui.miuix.LocalLiquidGlassBackdrop
 import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
@@ -138,6 +135,7 @@ import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.icon.extended.GridView
 import top.yukonga.miuix.kmp.icon.extended.ListView
+import top.yukonga.miuix.kmp.icon.extended.Ok
 
 private val FORUM_AVATAR_SIZE = 40.dp
 @Preview("HomeSearchBar")
@@ -371,7 +369,8 @@ private fun ForumItemContent(forum: LikedForum, showAvatar: Boolean) {
 
         Surface(
             modifier = Modifier.width(54.dp),
-            shape = SquircleShape(SquircleCornerRadius.ExtraSmall),
+            // Half the enclosing card's radius, so the badge's corners stay concentric with it.
+            shape = SquircleShape(Sizes.CornerRadius / 2),
             color = MaterialTheme.colorScheme.secondary,
         ) {
             Row(
@@ -550,7 +549,7 @@ fun AnimatedVisibilityScope.HomePage(
                     if (loggedIn) {
                         val isSinging by viewModel.isOkSignWorkerRunning.collectAsStateWithLifecycle(true)
                         ActionItem(
-                            icon = ImageVector.vectorResource(id = R.drawable.ic_oksign),
+                            icon = MiuixIcons.Ok,
                             contentDescription = R.string.title_oksign,
                             enabled = !isSinging
                         ) {

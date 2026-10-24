@@ -299,7 +299,8 @@ fun ForumInfoChip(
     Row(
         modifier = modifier
             .height(IntrinsicSize.Min)
-            .squircleClip(SquircleCornerRadius.ExtraSmall)
+            // Half the enclosing card's radius, so the chip's corners stay concentric with it.
+            .squircleClip(Sizes.CornerRadius / 2)
             .background(color = MaterialTheme.colorScheme.secondaryContainer)
             .clickable(onClick = onClick)
             .padding(4.dp),

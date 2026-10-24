@@ -8,10 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Favorite
-import androidx.compose.material.icons.rounded.FavoriteBorder
-import androidx.compose.material.icons.rounded.SwapCalls
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,8 +25,12 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.theme.LikeRed
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onNotNull
-import com.huanchengfly.tieba.post.ui.icons.CommentNew
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
+import top.yukonga.miuix.kmp.icon.MiuixIcons
+import top.yukonga.miuix.kmp.icon.extended.Favorites
+import top.yukonga.miuix.kmp.icon.extended.FavoritesFill
+import top.yukonga.miuix.kmp.icon.extended.Reply
+import top.yukonga.miuix.kmp.icon.extended.Share
 
 @NonRestartableComposable
 @Composable
@@ -88,7 +88,7 @@ fun ThreadActionButtonRow(
         ActionBtn(
             modifier = Modifier.weight(1f),
             text = context.shortNumString(shares, R.string.title_share),
-            icon = Icons.Rounded.SwapCalls,
+            icon = MiuixIcons.Share,
             contentDescription = stringResource(id = R.string.title_share),
             onClick = onShareClicked,
         )
@@ -96,14 +96,14 @@ fun ThreadActionButtonRow(
         ActionBtn(
             modifier = Modifier.weight(1f),
             text = context.shortNumString(replies.toLong(), R.string.title_reply),
-            icon = Icons.Rounded.CommentNew,
+            icon = MiuixIcons.Reply,
             contentDescription = stringResource(id = R.string.desc_comment),
             onClick = onReplyClicked
         )
 
         ActionBtn(
             modifier = Modifier.weight(1f),
-            icon = if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+            icon = if (liked) MiuixIcons.FavoritesFill else MiuixIcons.Favorites,
             contentColor = if (liked) {
                 // 点亮的爱心固定是红的，跟主题色无关（默认主题的 primary 是蓝的）。
                 LikeRed

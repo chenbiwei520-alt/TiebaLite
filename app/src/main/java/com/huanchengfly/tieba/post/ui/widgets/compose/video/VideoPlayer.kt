@@ -93,6 +93,7 @@ import com.huanchengfly.tieba.post.ui.common.theme.compose.onNotNull
 import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
 import com.huanchengfly.tieba.post.ui.widgets.compose.ActionItem
 import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultErrorResource
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberGestureAwareInsets
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.buttons.ContentScaleButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.buttons.LabeledProgressSlider
 import com.huanchengfly.tieba.post.ui.widgets.compose.video.buttons.MediaFormatsButton
@@ -332,7 +333,7 @@ internal fun VideoControls(
                     onContentScaleSelected = onContentScaleSelected,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .windowInsetsPadding(NavigationBarDefaults.windowInsets),
+                        .windowInsetsPadding(rememberGestureAwareInsets(NavigationBarDefaults.windowInsets)),
                 )
             }
         }

@@ -28,7 +28,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeightIn
 import androidx.compose.foundation.layout.size
@@ -121,6 +123,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.EmoticonInlineImage
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.StrongBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberGestureAwareInsets
 import com.huanchengfly.tieba.post.ui.widgets.edittext.widget.UndoableEditText
 import com.huanchengfly.tieba.post.utils.DisplayUtil.toDpSize
 import com.huanchengfly.tieba.post.utils.Emoticon
@@ -316,7 +319,7 @@ private fun ReplyPageContent(
     Column(
         modifier = Modifier
             .background(TiebaLiteTheme.extendedColorScheme.navigationContainer)
-            .navigationBarsPadding(),
+            .windowInsetsPadding(rememberGestureAwareInsets(WindowInsets.navigationBars)),
         verticalArrangement = Arrangement.Bottom
     ) {
         Row(

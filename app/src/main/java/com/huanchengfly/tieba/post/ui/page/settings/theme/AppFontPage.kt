@@ -36,6 +36,7 @@ import com.huanchengfly.tieba.post.ui.miuix.SquircleCornerRadius
 import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixBackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.NegativeButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.PositiveButton
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberGestureAwareInsets
 import kotlin.math.abs
 import top.yukonga.miuix.kmp.basic.Scaffold as MiuixScaffold
 import top.yukonga.miuix.kmp.basic.Slider
@@ -96,6 +97,7 @@ fun AppFontPage(
                 )
             }
         },
+        contentWindowInsets = rememberGestureAwareInsets(),
     ) { paddingValues ->
         val context = LocalContext.current
         val fontScale by vm.fontScale.collectAsStateWithLifecycle()

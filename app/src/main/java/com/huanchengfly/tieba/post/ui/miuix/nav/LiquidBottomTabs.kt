@@ -119,8 +119,15 @@ private val LiquidBarParallax = 4.dp
 /** Scale the capsule animates to while pressed: the reference's `78f / 56f`. */
 private const val LiquidPressedScale = 78f / 56f
 
-/** Opacity of the container colour laid over the blur — the reference's `0.4f`. */
-private const val LiquidContainerAlpha = 0.4f
+/** Opacity of the container colour laid over the blur — tuned down from the reference's `0.4f`. */
+private const val LiquidContainerAlpha = 0.15f
+
+/**
+ * Opacity of the flat fallback's container colour. The fallback has no blur behind it, so it keeps
+ * the reference's `0.4f` — at the glass path's lower alpha the page would show through unblurred
+ * and fight the labels.
+ */
+private const val LiquidFallbackContainerAlpha = 0.4f
 
 /**
  * Opacity of the capsule's rest tint. The reference lays `Black 10%` (light) / `White 10%` (dark)
@@ -129,8 +136,8 @@ private const val LiquidContainerAlpha = 0.4f
  */
 private const val LiquidPillRestTint = 0.1f
 
-/** Blur radius of the slab's and the capture layer's fill, in dp — the reference's `blur(8f.dp)`. */
-private const val LiquidBarBlurRadius = 8f
+/** Blur radius of the slab's and the capture layer's fill, in dp — reduced from the reference's `8f`. */
+private const val LiquidBarBlurRadius = 4f
 
 /** Constant edge lens on the visible slab and the press-driven lens on the capture layer, in dp. */
 private val LiquidSlabLensRadius = 24.dp
@@ -246,6 +253,7 @@ fun LiquidBottomTabs(
     val accentColor = colors.primary
     val idleColor = colors.onSurfaceContainerVariant
     val containerColor = colors.surfaceContainer.copy(alpha = LiquidContainerAlpha)
+    val fallbackContainerColor = colors.surfaceContainer.copy(alpha = LiquidFallbackContainerAlpha)
     val pillRestTint = if (isDark) Color.White else Color.Black
     val outlineColor = colors.outline.copy(alpha = if (isDark) 0.35f else 0.6f)
     val capsuleShape: Shape = remember { ContinuousCapsule() }
@@ -362,7 +370,7 @@ fun LiquidBottomTabs(
                         scaleX = damped.scaleX / (1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f))
                         scaleY = damped.scaleY * (1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f))
                     }
-                    .background(color = containerColor, shape = capsuleShape)
+                    .background(color = fallbackContainerColor, shape = capsuleShape)
                     .squircleBorder(
                         width = LiquidEdgeWidth,
                         color = outlineColor,
@@ -387,7 +395,7 @@ fun LiquidBottomTabs(
                 Modifier
                     .graphicsLayer { translationX = panelOffset }
                     .shadow(elevation = LiquidBarShadow, shape = capsuleShape)
-                    .background(color = containerColor, shape = capsuleShape)
+                    .background(color = fallbackContainerColor, shape = capsuleShape)
                     .squircleBorder(
                         width = LiquidEdgeWidth,
                         color = outlineColor,
@@ -529,6 +537,11 @@ fun LiquidBottomTabs(
                     .drawBackdrop(
                         backdrop = combinedBackdrop,
                         shape = { ContinuousCapsule() },
+                        // Full-resolution sample: the press/velocity layer block magnifies this
+                        // buffer, so the default 0.42 downsample turns the captured icon copy
+                        // into visible blocks while dragging. The capsule is one tab wide, so
+                        // the extra buffer cost is negligible.
+                        downsampleScale = 1f,
                         effects = {
                             val progress = damped.pressProgress
                             lens(

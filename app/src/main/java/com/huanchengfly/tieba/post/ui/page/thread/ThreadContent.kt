@@ -107,7 +107,6 @@ import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.basic.Check
-import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 sealed class Type(val key: String) {
     object FirstPost: Type("FirstPost")
@@ -736,15 +735,12 @@ fun PostCard(
 
                         if (post.subPosts != null && post.subPostNumber > 0 && !immersiveMode) {
                             Surface(
-                                modifier = paddingModifier,
-                                shape = SquircleShape(SquircleCornerRadius.Small),
-                                // Explicit Miuix neutral instead of tonalElevation: elevation tints
-                                // blue on the themed dark surface, which is why the 楼中楼 block
-                                // read as blue. background (not surfaceContainer — that is the
-                                // card's own tone, the block would blend in) reads one step darker
-                                // in light mode and darker still in dark mode, the standard
-                                // inset-well contrast inside a card.
-                                color = MiuixTheme.colorScheme.background
+                                modifier = paddingModifier.fillMaxWidth(),
+                                // A nested card inside the 16dp floor card: half its radius keeps
+                                // the corners concentric, and secondaryContainer provides the
+                                // visible inset-well tone used by the notification quote card.
+                                shape = SquircleShape(Sizes.CornerRadius / 2),
+                                color = MaterialTheme.colorScheme.secondaryContainer
                             ) {
                                 Column(
                                     modifier = Modifier.padding(vertical = 10.dp),

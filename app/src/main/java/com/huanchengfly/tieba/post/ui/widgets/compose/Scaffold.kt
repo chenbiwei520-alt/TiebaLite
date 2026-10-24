@@ -12,8 +12,13 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.mandatorySystemGestures
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.onConsumedWindowInsetsChanged
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.LocalContentColor
@@ -45,6 +50,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -65,6 +71,39 @@ fun SwipeToDismissSnackbarHost(hostState: SnackbarHostState, modifier: Modifier 
 fun rememberSnackbarHostState(): SnackbarHostState = remember { top.yukonga.miuix.kmp.basic.SnackbarHostState() }
 
 val LocalSnackbarHostState = staticCompositionLocalOf<SnackbarHostState> { error("no scaffold here!") }
+
+// The floating gesture handle sits at least this far above the screen edge even when the system
+// reports no navigation-bar inset (landscape gesture navigation reports 0dp for `navigationBars`).
+private val GestureHandleClearance = 24.dp
+
+/**
+ * Bottom clearance for content that reaches the screen edge: the larger of the navigation bar, the
+ * mandatory gesture area and a [GestureHandleClearance] floor. In landscape gesture navigation the
+ * first two collapse to 0dp while the floating handle still overlays content, so the floor keeps
+ * the last row of every page above it.
+ */
+@Composable
+fun rememberGestureHandleBottomClearance(): Dp {
+    val density = LocalDensity.current
+    val navigationBar = WindowInsets.navigationBars.getBottom(density)
+    val mandatoryGestures = WindowInsets.mandatorySystemGestures.getBottom(density)
+    return with(density) {
+        maxOf(navigationBar, mandatoryGestures, GestureHandleClearance.roundToPx()).toDp()
+    }
+}
+
+/**
+ * [base] with its bottom edge raised to [rememberGestureHandleBottomClearance]. Bottom-only on
+ * purpose: unioning the full gesture insets would also pad the left/right back-gesture areas.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun rememberGestureAwareInsets(
+    base: WindowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout),
+): WindowInsets {
+    val bottom = rememberGestureHandleBottomClearance()
+    return remember(base, bottom) { base.union(WindowInsets(bottom = bottom)) }
+}
 
 @Composable
 fun MyScaffold(
@@ -161,7 +200,7 @@ fun MyScaffold(
                 floatingActionButtonPosition = miuixFabPosition,
                 snackbarHost = snackbarHost,
                 containerColor = backgroundColor,
-                contentWindowInsets = contentWindowInsets,
+                contentWindowInsets = rememberGestureAwareInsets(contentWindowInsets),
                 content = { padding ->
                     // `ProvideRecordingBackdrop` marks `glassBackdrop` as already recording for
                     // everything below, so a page that (mistakenly) applies
@@ -276,7 +315,7 @@ fun Scaffold(
     floatingActionButtonPosition: FabPosition = FabPosition.End,
     containerColor: Color = MaterialTheme.colorScheme.background,
     contentColor: Color = contentColorFor(containerColor),
-    contentWindowInsets: WindowInsets = ScaffoldDefaults.contentWindowInsets,
+    contentWindowInsets: WindowInsets = rememberGestureAwareInsets(),
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val safeInsets = remember(contentWindowInsets) { MutableWindowInsets(contentWindowInsets) }

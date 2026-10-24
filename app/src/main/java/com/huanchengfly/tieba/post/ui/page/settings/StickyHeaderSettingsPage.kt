@@ -52,6 +52,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixBackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.fade
 import com.huanchengfly.tieba.post.ui.widgets.compose.placeholder
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberGestureAwareInsets
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
@@ -91,6 +92,7 @@ fun StickyHeaderSettingsPage(
                 )
             }
         },
+        contentWindowInsets = rememberGestureAwareInsets(),
     ) { contentPadding ->
         Box(
             modifier = Modifier.fillMaxSize().padding(contentPadding),

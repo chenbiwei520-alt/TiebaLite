@@ -50,6 +50,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.ExtendedFabHeight
 import com.huanchengfly.tieba.post.ui.widgets.compose.PlainTooltipBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.ToolbarToFabGap
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberGestureAwareInsets
 import com.huanchengfly.tieba.post.utils.TiebaUtil
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Share
@@ -86,7 +87,7 @@ fun CopyTextDialogPage(
             )
         },
         bottomBar = {
-            Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+            Spacer(modifier = Modifier.windowInsetsBottomHeight(rememberGestureAwareInsets(WindowInsets.navigationBars)))
         }
     ) { paddingValues ->
         Box(

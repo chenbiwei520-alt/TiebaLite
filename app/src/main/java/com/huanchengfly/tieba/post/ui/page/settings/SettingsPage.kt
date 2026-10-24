@@ -50,6 +50,8 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.preference.SegmentedPrefsS
 import com.huanchengfly.tieba.post.ui.widgets.compose.preference.SegmentedPrefsScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.preference.SegmentedTextPrefsScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.preference.SettingsSegmentedPrefsScope
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberGestureAwareInsets
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberGestureHandleBottomClearance
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberSnackbarHostState
 import com.huanchengfly.tieba.post.utils.LocalAccount
 import com.huanchengfly.tieba.post.utils.StringUtil
@@ -100,6 +102,7 @@ fun SettingsPage(navigator: NavController) {
             }
         },
         snackbarHost = { SwipeToDismissSnackbarHost(snackbarHostState) },
+        contentWindowInsets = rememberGestureAwareInsets(),
     ) { contentPadding ->
         CompositionLocalProvider(LocalSnackbarHostState provides snackbarHostState) {
             LazyColumn(
@@ -364,7 +367,8 @@ private fun MiuixSettingsScaffold(
             androidx.compose.foundation.layout.Box(
                 modifier = modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)),
             ) {
-                contentBlock(PaddingValues.Zero)
+                // 面板模式没有 Scaffold 提供窗口 inset，列表自己让出悬浮小白条的高度。
+                contentBlock(PaddingValues(bottom = rememberGestureHandleBottomClearance()))
             }
         } else {
             MiuixScaffold(
@@ -386,6 +390,7 @@ private fun MiuixSettingsScaffold(
                     }
                 },
                 snackbarHost = snackbarHost,
+                contentWindowInsets = rememberGestureAwareInsets(),
                 content = contentBlock,
             )
         }

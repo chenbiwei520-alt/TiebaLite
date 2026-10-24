@@ -55,6 +55,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixBackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.LocalSnackbarHostState
 import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeToDismissSnackbarHost
 import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeader
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberGestureAwareInsets
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberSnackbarHostState
 import com.huanchengfly.tieba.post.utils.StringUtil
 import top.yukonga.miuix.kmp.basic.Card
@@ -116,6 +117,7 @@ fun AppThemePage(
             }
         },
         snackbarHost = { SwipeToDismissSnackbarHost(snackbarHostState) },
+        contentWindowInsets = rememberGestureAwareInsets(),
     ) { contentPadding ->
         CompositionLocalProvider(
             LocalSnackbarHostState provides snackbarHostState,

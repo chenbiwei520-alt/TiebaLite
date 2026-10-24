@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.material.icons.rounded.Warning
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import top.yukonga.miuix.kmp.basic.TabRowDefaults
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -94,6 +95,7 @@ import com.huanchengfly.tieba.post.arch.collectUiEventWithLifecycle
 import com.huanchengfly.tieba.post.goToActivity
 import com.huanchengfly.tieba.post.models.database.UserProfile
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
+import com.huanchengfly.tieba.post.ui.miuix.MiuixProgressiveBlurBar
 import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
 import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
 import com.huanchengfly.tieba.post.ui.common.LocalAnimatedVisibilityScope
@@ -217,7 +219,10 @@ fun UserProfilePage(
         error = uiState.error,
         onReload = viewModel::onRefresh,
         loadingScreen = {
-            LoadingScreen(Modifier, uid, avatar, nickname, username, transitionKey, onBack)
+            LoadingScreen(
+                modifier = Modifier,
+                onBack = onBack,
+            )
         }
     ) {
         val userProfile = uiState.userProfile ?: return@StateScreen
@@ -321,13 +326,7 @@ fun UserProfilePage(
         MyScaffold(
             topBar = {
                 TopAppBarPaged(
-                    title = {
-                        Nickname(
-                            nickname = userProfile.nickname ?: userProfile.name,
-                            transitionKey = transitionKey,
-                            block = blockState,
-                        )
-                    },
+                    title = {},
                     navigationIcon = { AnimatedBackButton(onBackPressed = onBack) },
                     actions = {
                         if (uiState.isRequestingFollow) {
@@ -401,7 +400,8 @@ fun UserProfilePage(
                             Column(
                                 modifier = Modifier.onSizeChanged {
                                     scrollBehavior.state.heightOffsetLimit = -it.height.toFloat()
-                                }
+                                },
+                                horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
                                 ProfileHeaderBlock(
                                     modifier = Modifier.padding(horizontal = 16.dp),
@@ -414,13 +414,13 @@ fun UserProfilePage(
                                 )
 
                                 Spacer(modifier = Modifier.height(12.dp))
+
+                                // Inside the collapsing header so it scrolls away with it
+                                // instead of floating over the feed. Landscape renders its own
+                                // copy in the content column.
+                                UserProfileTabRow(tabs, pagerState, backdrop = barBackdrop)
                             }
                         }
-
-                        // Portrait only: in landscape the tab row belongs to the content's right
-                        // column. Rendering it here as well duplicated the row and left one copy
-                        // overlapping the post list.
-                        UserProfileTabRow(tabs, pagerState, backdrop = barBackdrop)
                     }
                 }
             },
@@ -432,11 +432,9 @@ fun UserProfilePage(
                         .fillMaxSize()
                         // Reserve the bar's height here: unlike portrait, the landscape header lives
                         // in this column instead of inside the top bar, so without the top inset the
-                        // cards and the tab row get drawn underneath the bar.
-                        .padding(
-                            top = paddingValues.calculateTopPadding(),
-                            bottom = paddingValues.calculateBottomPadding(),
-                        )
+                        // cards and the tab row get drawn underneath the bar. The bottom inset is
+                        // handled per pane so both scroll behind the floating gesture handle.
+                        .padding(top = paddingValues.calculateTopPadding())
                 ) {
                     Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
                         Column(
@@ -444,7 +442,12 @@ fun UserProfilePage(
                                 .fillMaxHeight()
                                 .fillMaxWidth(0.5f)
                                 .verticalScroll(rememberScrollState())
-                                .padding(horizontal = 16.dp, vertical = 16.dp)
+                                .padding(
+                                    start = 16.dp,
+                                    top = 16.dp,
+                                    end = 16.dp,
+                                    bottom = 16.dp + paddingValues.calculateBottomPadding(),
+                                )
                         ) {
                             // Reuse the portrait header so both orientations share one look:
                             // identity card, stat card, intro card.
@@ -458,27 +461,43 @@ fun UserProfilePage(
                             )
                         }
 
-                        // Centred so the (content-sized) tab row matches the portrait layout, where
-                        // the top bar's content slot centres it. The pager below fills, so it is
-                        // unaffected by the alignment.
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            UserProfileTabRow(tabs, pagerState)
+                        // Feed pane: the pager runs full-height behind the tab row so list
+                        // content scrolls under the pills, where the progressive blur band
+                        // softens it. The pager's own top content padding keeps the first
+                        // item below the pills at rest.
+                        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                            movablePager(
+                                Modifier.fillMaxSize(),
+                                true,
+                                PaddingValues(
+                                    top = TabRowDefaults.TabRowHeight,
+                                    bottom = paddingValues.calculateBottomPadding(),
+                                ),
+                            )
 
-                            movablePager(Modifier.fillMaxSize(), true, PaddingValues(0.dp))
+                            MiuixProgressiveBlurBar(
+                                backdrop = barBackdrop,
+                                blurProgress = { 1f },
+                                bandHeight = TabRowDefaults.TabRowHeight,
+                            ) {
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    UserProfileTabRow(
+                                        tabs = tabs,
+                                        pagerState = pagerState,
+                                        modifier = Modifier.align(Alignment.Center),
+                                        backdrop = barBackdrop,
+                                    )
+                                }
+                            }
                         }
                     }
                 }
             } else {
                 // Fullscreen pager: the lists start below the (dynamically padded) bar and slide
-                // under it once the header has collapsed, where the bar blurs them
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = paddingValues.calculateBottomPadding())
-                ) {
+                // under it once the header has collapsed, where the bar blurs them. The pager
+                // itself runs to the bottom edge so content scrolls behind the translucent
+                // navigation bar; the lists' content padding keeps the last row clear of it.
+                Box(modifier = Modifier.fillMaxSize()) {
                     movablePager(
                         Modifier
                             .fillMaxSize()
@@ -977,172 +996,20 @@ private fun UserIntro(
 }
 
 @Composable
-private fun UserProfileDetailPlaceholder(
-    modifier: Modifier = Modifier,
-    uid: Long,
-    avatar: String? = null,
-    nickname: String? = null,
-    username: String? = null,
-    transitionKey: String? = null,
-    landscape: Boolean = false
-) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(
-            space = 8.dp,
-            alignment = if (isWindowHeightCompact()) Alignment.Top else Alignment.CenterVertically
-        ),
-        horizontalAlignment = if (landscape) Alignment.CenterHorizontally else Alignment.Start
-    ) {
-        if (landscape) {
-            UserAvatar(modifier = Modifier.size(AvatarLandscapeSize), avatar, uid, transitionKey)
-        }
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = if (landscape) Alignment.CenterHorizontally else Alignment.Start
-        ) {
-            if (landscape) {
-                Nickname(nickname = nickname, transitionKey = transitionKey)
-            }
-
-            if (!username.isNullOrEmpty()) {
-                Username(username = username, transitionKey = transitionKey)
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(
-                    space = 8.dp,
-                    alignment = if (landscape) Alignment.CenterHorizontally else Alignment.Start
-                ),
-            ) {
-                repeat(4) {
-                    Box(modifier = Modifier.size(width = 28.dp, height = 40.dp).placeholder())
-                    if (it < 3) {
-                        VerticalDivider()
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun StateScreenScope.LoadingScreen(
     modifier: Modifier = Modifier,
-    uid: Long = -1,
-    avatar: String? = null,
-    nickname: String? = null,
-    username: String? = null,
-    transitionKey: String? = null,
     onBack: () -> Unit = {},
 ) {
-    val landscapeLayout = ContentLandscapeLayout
-    val navIcon = remember {
-        movableContentOf { BackNavigationIcon(onBackPressed = onBack) }
-    }
-    val loadingLottieContent = remember {
-        movableContentOf<Modifier> {
-            Box(modifier = it, contentAlignment = Alignment.Center) {
-                DefaultLoadingScreen()
-            }
-        }
-    }
-    val introPlaceholderContent = remember {
-        movableContentOf<Modifier> {
-            Column(modifier = it) {
-                Text(
-                    text = stringResource(id = R.string.tip_no_intro),
-                    modifier = Modifier.placeholder(),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                // Sex, ID, IP
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Box(modifier = Modifier.size(38.dp, 24.dp).placeholder(shape = CircleShape))
-                    Box(modifier = Modifier.size(140.dp, 24.dp).placeholder(shape = CircleShape))
-                    Box(modifier = Modifier.size(86.dp, 24.dp).placeholder(shape = CircleShape))
-                }
-            }
-        }
-    }
-
     Column(
         modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
     ) {
         TopAppBar(
-            title = {
-                Nickname(
-                    modifier = Modifier.padding(start = 2.dp),
-                    nickname = nickname,
-                    transitionKey = transitionKey,
-                )
-            },
-            navigationIcon = navIcon,
+            title = {},
+            navigationIcon = { BackNavigationIcon(onBackPressed = onBack) },
         )
 
-        if (landscapeLayout) {
-            Row {
-                Column(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.35f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(start = 16.dp, bottom = 16.dp)
-                ) {
-                    UserProfileDetailPlaceholder(
-                        uid = uid,
-                        avatar = avatar,
-                        nickname = nickname,
-                        username = username,
-                        transitionKey = transitionKey,
-                        landscape = true
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    introPlaceholderContent(Modifier)
-                }
-
-                loadingLottieContent(Modifier.fillMaxSize())
-            }
-        } else {
-            Column(modifier = Modifier.fillMaxSize()) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    // Avatar + names placeholder
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(modifier = Modifier.size(88.dp).placeholder(shape = CircleShape))
-                        Spacer(modifier = Modifier.width(20.dp))
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(modifier = Modifier.size(width = 160.dp, height = 28.dp).placeholder())
-                            Box(modifier = Modifier.size(width = 110.dp, height = 18.dp).placeholder())
-                        }
-                    }
-
-                    // Stat card placeholder
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(88.dp)
-                            .placeholder()
-                    ) {}
-
-                    introPlaceholderContent(Modifier)
-                }
-
-                loadingLottieContent(Modifier.fillMaxSize())
-            }
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            DefaultLoadingScreen()
         }
     }
 }
@@ -1317,7 +1184,7 @@ private fun UserProfileDetailPreview() = TiebaLiteTheme {
 private fun LoadingScreenPreview() = TiebaLiteTheme {
     Surface {
         with(StateScreenScope()) {
-            LoadingScreen(nickname = "我是谁", username = "user(123)")
+            LoadingScreen()
         }
     }
 }
@@ -1327,7 +1194,7 @@ private fun LoadingScreenPreview() = TiebaLiteTheme {
 private fun LoadingScreenLandscapePreview() = TiebaLiteTheme {
     Surface {
         with(StateScreenScope()) {
-            LoadingScreen(nickname = "我是谁", username = "user(123)")
+            LoadingScreen()
         }
     }
 }

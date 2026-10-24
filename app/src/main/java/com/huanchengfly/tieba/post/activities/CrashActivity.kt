@@ -25,6 +25,7 @@ import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.ErrorStackTraceScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.PositiveButton
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberGestureAwareInsets
 import com.huanchengfly.tieba.post.utils.CrashLogUtil
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -43,7 +44,7 @@ class CrashActivity : ComponentActivity() {
                     modifier = Modifier
                         .fillMaxSize()
                         .background(color = MaterialTheme.colorScheme.background)
-                        .windowInsetsPadding(insets = WindowInsets.safeDrawing),
+                        .windowInsetsPadding(insets = rememberGestureAwareInsets(WindowInsets.safeDrawing)),
                     stackTrace = stackTrace
                 ) {
                     PositiveButton(

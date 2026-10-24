@@ -1,13 +1,11 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
 import android.content.Context
-import androidx.annotation.RawRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,18 +15,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.airbnb.lottie.compose.LottieAnimation
-import com.airbnb.lottie.compose.LottieCompositionSpec
-import com.airbnb.lottie.compose.LottieConstants
-import com.airbnb.lottie.compose.rememberLottieComposition
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.retrofit.exception.NoConnectivityException
 import com.huanchengfly.tieba.post.api.retrofit.exception.TiebaApiException
@@ -38,6 +32,7 @@ import com.huanchengfly.tieba.post.api.retrofit.exception.getErrorMessage
 import com.huanchengfly.tieba.post.theme.ProvideContentColorTextStyle
 import com.huanchengfly.tieba.post.ui.common.theme.compose.onCase
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.isWindowHeightCompact
+import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.huanchengfly.tieba.post.ui.common.windowsizeclass.isWindowWidthCompact
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreenScope
@@ -48,7 +43,7 @@ fun TipScreen(
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     scrollable: Boolean = true,
-    image: @Composable () -> Unit = {},
+    image: (@Composable () -> Unit)? = null,
     message: (@Composable () -> Unit)? = null,
     actions: (@Composable () -> Unit)? = null,
 ) {
@@ -63,8 +58,10 @@ fun TipScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.CenterVertically)
     ) {
-        Box(modifier = Modifier.requiredWidthIn(max = 400.dp)) {
-            image()
+        if (image != null) {
+            Box(modifier = Modifier.requiredWidthIn(max = 400.dp)) {
+                image()
+            }
         }
         // MIUI type ramp: title2 for the headline, body2 dimmed for the supporting line.
         ProvideContentColorTextStyle(
@@ -90,7 +87,6 @@ fun TipScreen(
 class ErrorType(
     @StringRes val title: Int,
     val message: String,
-    @RawRes val lottieResId: Int,
 )
 
 @Composable
@@ -105,9 +101,14 @@ fun StateScreenScope.ErrorScreen(
         modifier = modifier,
         actions = {
             if (showReload && canReload) {
-                PositiveButton(
-                    textRes = R.string.btn_reload,
-                    onClick = this@ErrorScreen::reload
+                Button(
+                    onClick = { this@ErrorScreen.reload() },
+                    content = {
+                        Text(
+                            text = stringResource(id = R.string.button_retry),
+                            style = MiuixTheme.textStyles.button,
+                        )
+                    },
                 )
             }
             actions?.invoke()
@@ -130,21 +131,18 @@ fun ErrorTipScreen(
 
     TipScreen(
         title = {
-            Text(text = stringResource(id = errorType.title))
-        },
-        modifier = modifier,
-        image = {
-            val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(errorType.lottieResId))
-            LottieAnimation(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(2f)
+            Text(
+                text = stringResource(id = errorType.title),
+                style = MiuixTheme.textStyles.title3,
+                textAlign = TextAlign.Center,
             )
         },
+        modifier = modifier,
         message = {
-            Text(text = errorType.message)
+            Text(
+                text = errorType.message,
+                textAlign = TextAlign.Center,
+            )
         },
         actions = actions
     )
@@ -201,30 +199,26 @@ fun ErrorStackTraceScreen(
 // Returns null if error is unknown type
 private fun toKnownErrorType(context: Context, err: Throwable?): ErrorType? {
     return when (err) {
-        null -> ErrorType(R.string.title_unknown_error, context.getString(R.string.message_unknown_error), R.raw.lottie_bug_hunting)
+        null -> ErrorType(R.string.title_unknown_error, context.getString(R.string.message_unknown_error))
 
         is NoConnectivityException -> ErrorType(
             title = R.string.title_no_internet_connectivity,
             message = context.getString(R.string.message_no_internet_connectivity, err.getErrorMessage()),
-            lottieResId = R.raw.lottie_no_internet
         )
 
         is TiebaApiException -> ErrorType(
             title = R.string.title_api_error,
             message = "${err.getErrorMessage()} Code: ${err.getErrorCode()}",
-            lottieResId = R.raw.lottie_error
         )
 
         is TiebaNotLoggedInException -> ErrorType(
             title = R.string.title_not_logged_in,
             message = context.getString(R.string.message_not_logged_in),
-            lottieResId = R.raw.lottie_astronaut
         )
 
         is SofireException -> ErrorType(
             title = R.string.title_sofire_blocked,
             message = context.getString(R.string.message_sofire_blocked),
-            lottieResId = R.raw.lottie_no_internet
         )
 
         else -> null // Unknown Type
