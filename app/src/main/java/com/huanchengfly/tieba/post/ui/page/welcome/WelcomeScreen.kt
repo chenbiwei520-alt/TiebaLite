@@ -27,15 +27,12 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.FormatPaint
 import androidx.compose.material.icons.rounded.PsychologyAlt
 import androidx.compose.material.icons.rounded.SentimentVerySatisfied
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
@@ -48,6 +45,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -55,6 +53,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -84,19 +84,20 @@ import com.huanchengfly.tieba.post.ui.page.settings.forumSortPreference
 import com.huanchengfly.tieba.post.ui.page.settings.hideReplyPreference
 import com.huanchengfly.tieba.post.ui.page.settings.imageLoadPreference
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.NegativeButton
-import com.huanchengfly.tieba.post.ui.widgets.compose.PositiveButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.WebView
 import com.huanchengfly.tieba.post.ui.widgets.compose.WebViewState
-import com.huanchengfly.tieba.post.ui.widgets.compose.containerColor
-import com.huanchengfly.tieba.post.ui.widgets.compose.contentColor
 import com.huanchengfly.tieba.post.ui.widgets.compose.preference.SegmentedPrefsScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberWebViewNavigator
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberWebViewState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Checkbox
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private fun PagerState.nextPage(scope: CoroutineScope) {
     scope.launch {
@@ -224,25 +225,67 @@ private fun BottomBar(
 
     // Back button is invisible on fist page
     AnimatedVisibility(visible = onBack != null, enter = fadeIn(), exit = fadeOut()) {
-        NegativeButton(text = stringResource(R.string.button_previous), onClick = onBack ?: none)
+        QuietButton(text = stringResource(R.string.button_previous), onClick = onBack ?: none)
     }
 
     Spacer(modifier = Modifier.weight(1.0f))
 
     // Login button only visible on last page
     AnimatedVisibility(visible = onLogin != null, enter = fadeIn(), exit = fadeOut()) {
-        NegativeButton(text = stringResource(R.string.button_login), onClick = onLogin ?: none)
+        QuietButton(text = stringResource(R.string.button_login), onClick = onLogin ?: none)
     }
 
     Spacer(modifier = Modifier.width(8.dp))
 
     // Proceed button always visible
-    PositiveButton(
+    PrimaryButton(
         text = stringResource(if (onLogin == null) R.string.button_next else R.string.button_no_login),
         enabled = onProceed != null,
         onClick = onProceed ?: none
     )
 }
+
+/**
+ * HyperOS 主操作胶囊按钮：primary 配色的 Miuix [Button]，用于引导页的"继续/以游客身份浏览"。
+ */
+@Composable
+private fun PrimaryButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) = Button(
+    onClick = onClick,
+    modifier = modifier,
+    enabled = enabled,
+    colors = ButtonDefaults.buttonColorsPrimary(),
+) {
+    Text(
+        text = text,
+        color = MiuixTheme.colorScheme.onPrimary,
+        style = MiuixTheme.textStyles.button
+    )
+}
+
+/**
+ * HyperOS 安静的次要入口：透明底、主题色文字的 Miuix [TextButton]，
+ * 用于"上一步/登录"这类不与主操作争夺注意力的动作。
+ */
+@Composable
+private fun QuietButton(
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) = TextButton(
+    text = text,
+    onClick = onClick,
+    modifier = modifier,
+    colors = ButtonDefaults.textButtonColors(
+        color = Color.Transparent,
+        disabledColor = Color.Transparent,
+        textColor = MiuixTheme.colorScheme.primary,
+    ),
+)
 
 @Composable
 fun DualTitleContent(
@@ -263,14 +306,14 @@ fun DualTitleContent(
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = stringResource(title),
-                style = MaterialTheme.typography.headlineSmall
+                style = MiuixTheme.textStyles.title2
             )
 
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = stringResource(subtitle),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.titleMedium
+                color = MiuixTheme.colorScheme.onBackgroundVariant,
+                style = MiuixTheme.textStyles.body1
             )
         }
 
@@ -296,12 +339,12 @@ fun DualTitleContent(
 ) = DualTitleContent(
     modifier = modifier,
     icon = {
-        Icon(
-            painter = icon,
-            contentDescription = null,
-            modifier = Modifier.matchParentSize(),
-            tint = MaterialTheme.colorScheme.primary
-        )
+            Icon(
+                painter = icon,
+                contentDescription = null,
+                modifier = Modifier.matchParentSize(),
+                tint = MiuixTheme.colorScheme.primary
+            )
     },
     title = title,
     subtitle = subtitle,
@@ -334,22 +377,37 @@ private fun UaPage(modifier: Modifier = Modifier, accepted: Boolean, onAcceptCha
             uaAcceptable = true
         }
 
-        Surface(
-            color = ButtonDefaults.textButtonColors().containerColor(uaAcceptable),
-            contentColor = ButtonDefaults.textButtonColors().contentColor(uaAcceptable),
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                // Miuix Checkbox 的交互区域只有 26dp 且无最小触控保底；把整行作为开关目标，
+                // 文字和勾选框都能响应点击。
+                .toggleable(
+                    value = accepted,
+                    enabled = uaAcceptable,
+                    role = Role.Checkbox,
+                    onValueChange = onAcceptChanged,
+                ),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.btn_disclaimer_accept),
-                    style = MaterialTheme.typography.labelLarge,
-                    textDecoration = TextDecoration.LineThrough.takeUnless { uaAcceptable },
-                )
-                Checkbox(accepted, onCheckedChange = onAcceptChanged, enabled = uaAcceptable)
-            }
+            Text(
+                text = stringResource(R.string.btn_disclaimer_accept),
+                // 划线 + 灰色双通道表达"尚未读到底"，不单靠颜色。
+                color = if (uaAcceptable) MiuixTheme.colorScheme.primary
+                else MiuixTheme.colorScheme.onBackgroundVariant,
+                style = MiuixTheme.textStyles.body1,
+                textDecoration = TextDecoration.LineThrough.takeUnless { uaAcceptable },
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            // 只渲染状态；点击由整行的 toggleable 接管，避免双重切换。
+            Checkbox(
+                state = ToggleableState(accepted),
+                onClick = null,
+                enabled = uaAcceptable,
+            )
         }
     }
 }
@@ -365,7 +423,6 @@ private fun HabitPage(modifier: Modifier = Modifier, habitSettings: Settings<Hab
         SegmentedPrefsScreen(
             settings = habitSettings,
             initialValue = HabitSettings(),
-            verticalArrangement = Arrangement.spacedBy(1.dp),
         ) {
             forumSortPreference()
 
@@ -393,7 +450,6 @@ private fun CustomPage(
         SegmentedPrefsScreen(
             settings = uiSettings,
             initialValue = UISettings(),
-            verticalArrangement = Arrangement.spacedBy(1.dp),
         ) {
             preference(
                 title = {

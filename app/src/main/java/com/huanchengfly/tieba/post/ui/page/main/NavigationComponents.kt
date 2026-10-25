@@ -1,6 +1,7 @@
 package com.huanchengfly.tieba.post.ui.page.main
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.indication
 import androidx.compose.foundation.interaction.Interaction
@@ -60,6 +61,7 @@ import androidx.compose.ui.layout.VerticalRuler
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
@@ -76,7 +78,6 @@ import com.huanchengfly.tieba.post.ui.miuix.SquircleShape
 import com.huanchengfly.tieba.post.ui.page.main.FloatingIconNavigationBarOverride.ShortNavigationBar
 import com.huanchengfly.tieba.post.ui.page.main.FloatingNavigationBarOverride.ShortNavigationBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.AccountNavIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.NavigationBarHeight
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.TallNavigationBarHeight
@@ -130,7 +131,11 @@ fun TbDrawerNavigationAction(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Avatar(data = R.drawable.ic_launcher_new_round, size = Sizes.Small)
+            Image(
+                painter = painterResource(R.drawable.ic_splash),
+                contentDescription = null, // 旁边的应用名文本已表达含义
+                modifier = Modifier.size(Sizes.Small)
+            )
             Text(
                 text = remember { context.getString(R.string.app_name).uppercase() },
                 modifier = Modifier.fillMaxWidth(),

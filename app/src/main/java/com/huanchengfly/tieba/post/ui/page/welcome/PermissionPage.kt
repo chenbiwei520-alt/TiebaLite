@@ -1,12 +1,9 @@
 package com.huanchengfly.tieba.post.ui.page.welcome
 
 import android.Manifest
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.PhoneAndroid
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -34,6 +31,7 @@ import com.huanchengfly.tieba.post.utils.PermissionUtils.askPermission
 import com.huanchengfly.tieba.post.utils.PermissionUtils.onDenied
 import com.huanchengfly.tieba.post.utils.PermissionUtils.onGranted
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private val PermissionTitleVerticalPadding: Dp = 8.dp
 
@@ -58,9 +56,9 @@ private fun SegmentedPrefsScope.permissionPreference(
             trailingContent = {
                 Text(
                     text = stringResource(R.string.button_grant),
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MiuixTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium,
-                    style = ButtonDefaults.textStyleFor(ButtonDefaults.MediumContainerHeight)
+                    style = MiuixTheme.textStyles.body1
                 )
             },
             onClick = { onRequest(info) }
@@ -107,7 +105,6 @@ fun PermissionPage(
         SegmentedPrefsScreen(
             settings = settings,
             initialValue = PrivacySettings(),
-            verticalArrangement = Arrangement.spacedBy(1.dp),
         ) {
             if (!permissionEssential.isNullOrEmpty()) {
                 group(title = R.string.title_permission_essential, titleVerticalPadding = PermissionTitleVerticalPadding) {

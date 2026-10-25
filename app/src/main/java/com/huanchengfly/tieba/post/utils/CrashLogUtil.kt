@@ -20,6 +20,7 @@ import android.content.Context
 import android.os.Build
 import com.huanchengfly.tieba.post.BuildConfig
 import com.huanchengfly.tieba.post.toastShort
+import com.huanchengfly.tieba.post.ui.miuix.ShaderBlurProbe
 import com.huanchengfly.tieba.post.utils.FileUtil.createFileInCacheDir
 import com.huanchengfly.tieba.post.utils.FileUtil.ensureParents
 import com.huanchengfly.tieba.post.utils.FileUtil.toSharedUri
@@ -59,6 +60,7 @@ object CrashLogUtil {
             Build type: ${BuildConfig.BUILD_TYPE}
             Android version: ${Build.VERSION.RELEASE}; (SDK ${Build.VERSION.SDK_INT}; Build/${Build.DISPLAY})
             Device name: ${Build.DEVICE} (${Build.PRODUCT})
+            AGSL blur probe: ${ShaderBlurProbe.verdictLabel}
         """.trimIndent()
     }
 }

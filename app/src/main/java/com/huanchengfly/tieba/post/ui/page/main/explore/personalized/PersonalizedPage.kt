@@ -139,7 +139,7 @@ fun PersonalizedPage(
                 modifier = modifier.fillMaxSize().testColumn(),
                 state = listState,
                 contentPadding = contentPadding,
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 isLoading = isLoadingMore,
                 onLazyLoad = viewModel::onLoadMore.takeUnless { isRefreshing },
                 bottomIndicator = defaultBottomIndicator,

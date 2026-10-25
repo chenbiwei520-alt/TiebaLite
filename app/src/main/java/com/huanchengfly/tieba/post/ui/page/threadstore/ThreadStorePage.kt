@@ -166,7 +166,7 @@ fun ThreadStorePage(
                     // Match the feed pages (ConcernPage / ForumThreadListPage / TopicDetailPage):
                     // 16dp horizontal gutter off the screen edge and 20dp between cards.
                     contentPadding = contentPadding + PaddingValues(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                     isLoading = isLoadingMore,
                     onLoad = viewModel::onLoadMore,
                     onLazyLoad = viewModel::onLoadMore.takeIf { hasMore },

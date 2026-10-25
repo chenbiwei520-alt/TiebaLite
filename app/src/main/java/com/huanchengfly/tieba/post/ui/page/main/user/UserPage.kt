@@ -283,8 +283,8 @@ fun UserPage(viewModel: UserViewModel = viewModel()) {
     val windowSizeClass = LocalWindowAdaptiveInfo.current.windowSizeClass
     val isWindowHeightExpanded = windowSizeClass.isHeightAtLeastBreakpoint(WindowSizeClass.HEIGHT_DP_EXPANDED_LOWER_BOUND)
     // Same dual-path top bar blur as the Home/Explore tabs: Miuix progressive blur when the
-    // device supports RuntimeShader (API 33+), flat Haze blur as the fallback on older devices,
-    // plain opaque bar when neither is available. LocalHazeState comes from animatedMainComposable.
+    // device can render it (API 33+ and the AGSL probe passes), plain opaque bar otherwise —
+    // `rememberMiuixBarBackdrop` returns null and the bar fills with surface color.
     val barBackdrop = rememberMiuixBarBackdrop()
     val scrollState = rememberScrollState()
 

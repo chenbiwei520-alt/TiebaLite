@@ -1,7 +1,9 @@
 package com.huanchengfly.tieba.post.ui.widgets.compose
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -47,6 +49,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -156,7 +159,16 @@ fun AccountNavIcon(
     val currentAccount = LocalAccount.current
 
     if (currentAccount == null) {
-        Avatar(data = R.drawable.ic_launcher_new_round, size = size)
+        // Not logged in: the old launcher glyph read as a Material placeholder. Use the app brand
+        // mark (the same one the welcome flow shows) and make the slot do what it visually promises:
+        // open the login screen every caller already wires up.
+        Image(
+            painter = painterResource(R.drawable.ic_splash),
+            contentDescription = stringResource(id = R.string.button_login),
+            modifier = Modifier
+                .size(size)
+                .clickable(onClick = onLoginClicked),
+        )
     } else {
         val menuState = rememberMenuState()
         val addTitleText = stringResource(id = R.string.title_new_account)

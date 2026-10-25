@@ -478,7 +478,6 @@ fun UserProfilePage(
                             MiuixProgressiveBlurBar(
                                 backdrop = barBackdrop,
                                 blurProgress = { 1f },
-                                bandHeight = TabRowDefaults.TabRowHeight,
                             ) {
                                 Box(modifier = Modifier.fillMaxWidth()) {
                                     UserProfileTabRow(

@@ -36,7 +36,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -113,7 +112,6 @@ import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.ui.widgets.compose.ListItemCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyLazyVerticalGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
-import com.huanchengfly.tieba.post.ui.widgets.compose.PositiveButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.Sizes
 import com.huanchengfly.tieba.post.ui.widgets.compose.TipScreen
@@ -128,6 +126,8 @@ import com.huanchengfly.tieba.post.utils.TiebaUtil
 import com.huanchengfly.tieba.post.ui.miuix.rememberSearchBarGlass
 import kotlin.random.Random
 import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixEnterAlwaysScrollBehavior
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.InputField
 import top.yukonga.miuix.kmp.basic.SearchBar
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
@@ -136,6 +136,7 @@ import top.yukonga.miuix.kmp.icon.basic.Check
 import top.yukonga.miuix.kmp.icon.extended.GridView
 import top.yukonga.miuix.kmp.icon.extended.ListView
 import top.yukonga.miuix.kmp.icon.extended.Ok
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 private val FORUM_AVATAR_SIZE = 40.dp
 @Preview("HomeSearchBar")
@@ -708,12 +709,18 @@ fun AnimatedVisibilityScope.HomePage(
 @NonRestartableComposable
 @Composable
 private fun ExploreButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
-    PositiveButton(
-        textRes = R.string.button_go_to_explore,
-        modifier = modifier,
-        colors = ButtonDefaults.filledTonalButtonColors(),
+    // Miuix 默认胶囊（secondaryVariant）：和主操作（primary）区分层级的安静按钮。
+    Button(
         onClick = onClick,
-    )
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(),
+    ) {
+        Text(
+            text = stringResource(R.string.button_go_to_explore),
+            color = MiuixTheme.colorScheme.onSecondaryVariant,
+            style = MiuixTheme.textStyles.button,
+        )
+    }
 }
 
 @Composable
@@ -731,26 +738,27 @@ private fun GuestScreen(
     onExploreClicked: () -> Unit,
     onLoginClicked: () -> Unit
 ) {
+    // 无插画：HyperOS 的未登录态用纯文字承载，宇航员动画只保留给登录后的空列表页。
     TipScreen(
         title = {
             Text(text = stringResource(id = R.string.title_not_logged_in))
         },
         modifier = modifier,
-        image = {
-            val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.lottie_astronaut))
-            LottieAnimation(
-                composition = composition,
-                iterations = LottieConstants.IterateForever,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(2f)
-            )
-        },
         message = {
             Text(text = stringResource(R.string.home_empty_login), textAlign = TextAlign.Center)
         },
         actions = {
-            PositiveButton(R.string.button_login, Modifier.fillMaxWidth(), onClick = onLoginClicked)
+            Button(
+                onClick = onLoginClicked,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColorsPrimary(),
+            ) {
+                Text(
+                    text = stringResource(R.string.button_login),
+                    color = MiuixTheme.colorScheme.onPrimary,
+                    style = MiuixTheme.textStyles.button,
+                )
+            }
 
             ExploreButton(modifier = Modifier.fillMaxWidth(), onClick = onExploreClicked)
         }

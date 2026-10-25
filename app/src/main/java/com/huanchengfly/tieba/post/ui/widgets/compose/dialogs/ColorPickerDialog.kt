@@ -22,9 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.DoubleArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -41,7 +39,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
@@ -54,6 +51,9 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.utils.extension.toHexString
 import top.yukonga.miuix.kmp.basic.ColorPalette
 import top.yukonga.miuix.kmp.basic.ColorPicker
+import top.yukonga.miuix.kmp.basic.TextField as MiuixTextField
+import top.yukonga.miuix.kmp.basic.TextFieldDefaults
+import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 fun ColorPickerDialog(
@@ -164,49 +164,60 @@ private fun ColorHexTextField(
         userInput = color.toHexString().uppercase()
     }
 
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+    Column(modifier = modifier) {
         val border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outline)
 
-        // Color box for initial color
-        Box(
-            modifier = Modifier
-                .size(64.dp, 32.dp)
-                .background(color = initial)
-                .border(border),
-        )
-
-        Icon(imageVector = Icons.Rounded.DoubleArrow, contentDescription = null)
-
-        // Color box for picked color
-        Box(
-            modifier = Modifier
-                .size(64.dp, 32.dp)
-                .background(color = color)
-                .border(border)
-        )
-
-        TextField(
-            value = userInput,
-            onValueChange = userInputChangeListener,
-            isError = isError,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = {
-                focusManager.clearFocus()
-                userInputChangeListener(userInput)
-            }),
-            singleLine = true,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 6.dp),
-            textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 18.sp),
-            colors = OutlinedTextFieldDefaults.colors(
-                errorCursorColor = Color.Red,
-                errorBorderColor = Color.Red
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Color box for initial color
+            Box(
+                modifier = Modifier
+                    .size(64.dp, 32.dp)
+                    .background(color = initial)
+                    .border(border),
             )
-        )
+
+            Icon(imageVector = Icons.Rounded.DoubleArrow, contentDescription = null)
+
+            // Color box for picked color
+            Box(
+                modifier = Modifier
+                    .size(64.dp, 32.dp)
+                    .background(color = color)
+                    .border(border)
+            )
+
+            // Miuix TextField 没有 isError 参数：校验态外部管理，边框/光标换 error 色，
+            // 下方再补一行文字提示——不能只靠颜色传达错误（0.9.4 规范）
+            MiuixTextField(
+                value = userInput,
+                onValueChange = userInputChangeListener,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = {
+                    focusManager.clearFocus()
+                    userInputChangeListener(userInput)
+                }),
+                singleLine = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 6.dp),
+                colors = if (isError) {
+                    TextFieldDefaults.textFieldColors(
+                        borderColor = MiuixTheme.colorScheme.error,
+                    )
+                } else {
+                    TextFieldDefaults.textFieldColors()
+                },
+            )
+        }
+
+        if (isError) {
+            Text(
+                text = stringResource(id = R.string.color_picker_invalid_color),
+                color = MiuixTheme.colorScheme.error,
+                modifier = Modifier.padding(start = 6.dp, top = 4.dp),
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
     }
 }
 

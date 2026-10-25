@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.huanchengfly.tieba.post.R
+import com.huanchengfly.tieba.post.ui.miuix.ShaderBlurProbe
 import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixPinnedScrollBehavior
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.widgets.compose.CenterAlignedTopAppBar
@@ -103,6 +104,12 @@ fun LogViewerPage(
                 },
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.titleSmall,
+            )
+            Text(
+                text = "AGSL blur: ${ShaderBlurProbe.verdictLabel}",
+                modifier = Modifier.padding(horizontal = 16.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
                 text = stringResource(R.string.summary_settings_log),

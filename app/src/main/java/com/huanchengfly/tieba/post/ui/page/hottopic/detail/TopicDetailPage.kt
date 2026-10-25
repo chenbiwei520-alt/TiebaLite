@@ -1,17 +1,17 @@
 package com.huanchengfly.tieba.post.ui.page.hottopic.detail
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.TextAutoSize
@@ -19,14 +19,30 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.BlurEffect
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -43,6 +59,7 @@ import com.huanchengfly.tieba.post.arch.collectUiEventWithLifecycle
 import com.huanchengfly.tieba.post.navigateDebounced
 import com.huanchengfly.tieba.post.plus
 import com.huanchengfly.tieba.post.theme.TiebaLiteTheme
+import com.huanchengfly.tieba.post.theme.createTopAppBarColors
 import com.huanchengfly.tieba.post.theme.isTranslucent
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.page.Destination
@@ -55,13 +72,14 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadBlockedTip
 import com.huanchengfly.tieba.post.ui.page.thread.ThreadLikeUiEvent
 import com.huanchengfly.tieba.post.ui.utils.rememberScrollOrientationConnection
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.widgets.compose.BlockableContent
-import com.huanchengfly.tieba.post.ui.miuix.MiuixProgressiveBlurBar
-import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
-import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.LocalLiquidGlassBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.PlatformProgressiveBlurBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.CollapsingTopAppBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.blur.ProgressiveBlur
+import top.yukonga.miuix.kmp.blur.progressiveTextureBlur
+import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixExitUntilCollapsedScrollBehavior
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
@@ -73,6 +91,9 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
 import com.huanchengfly.tieba.post.ui.widgets.compose.defaultBottomIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
+import com.huanchengfly.tieba.post.utils.TiebaLog
+import com.huanchengfly.tieba.post.utils.TiebaLog as TL
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 @Composable
@@ -118,17 +139,24 @@ fun TopicDetailPage(
 
         val hideBlockedContent by viewModel.hideBlockedContent.collectAsStateWithLifecycle()
 
-        val barBackdrop = rememberMiuixBarBackdrop()
         val topicInfo = uiState.topicInfo
+
+        TiebaLog.d("TopicBlur", "composed fraction=${scrollBehavior.state.collapsedFraction}")
+        DisposableEffect(Unit) {
+            onDispose { TiebaLog.d("TopicBlur", "disposed") }
+        }
 
         MyScaffold(
             topBar = {
+                // 采样本页 Scaffold 的全屏 capture，必须在 topBar 槽内读取——MyScaffold 只在
+                // Miuix Scaffold 周围提供这个 CompositionLocal，页面主体里读到的永远是 null。
+                val glassBackdrop = LocalLiquidGlassBackdrop.current
                 topicInfo?.let { info ->
                     TopicToolbar(
                         topicInfo = info,
                         onBack = navigator::navigateUp,
                         scrollBehavior = scrollBehavior,
-                        backdrop = barBackdrop,
+                        backdrop = glassBackdrop,
                     )
                 }
             },
@@ -174,15 +202,9 @@ fun TopicDetailPage(
             val heroImageUrl = topicInfo?.topicImage.orEmpty()
             val showHero = heroImageUrl.isNotEmpty() && !TiebaLiteTheme.colorScheme.isTranslucent
 
-            // The blur capture must WRAP the pull-to-refresh container, not sit inside it: the
-            // refresh container offsets its content through its own layer while dragging, so a
-            // capture nested inside it records against a different layer graph and the bar's blur
-            // never resolves. Same placement as the Home tab, which is why the blur works there.
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .miuixLayerBackdrop(barBackdrop),
-            ) {
+            // The page no longer keeps its own blur capture: the toolbar samples the Scaffold's
+            // full-screen one (see the topBar slot). A page-level capture box here used to stop
+            // being recorded after returning from a thread page, and the blur silently vanished.
             PullToRefreshBox(
                 isRefreshing = uiState.isRefreshing,
                 onRefresh = viewModel::onRefresh,
@@ -198,7 +220,7 @@ fun TopicDetailPage(
                             modifier = Modifier.fillMaxSize(),
                             state = lazyListState,
                             contentPadding = feedPadding,
-                            verticalArrangement = Arrangement.spacedBy(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                             isLoading = uiState.isLoadingMore,
                             onLazyLoad = viewModel::onLoadMore.takeIf { uiState.hasMore },
                             bottomIndicator = defaultBottomIndicator,
@@ -240,19 +262,11 @@ fun TopicDetailPage(
                     }
                 }
             }
-            }
         }
     }
 }
 
 private val TopicToolbarExpandedHeight = 180.dp
-
-/**
- * Height of the toolbar's resting row, i.e. what stays visible once the topic image has collapsed
- * away. Matches `CollapsingTopAppBar`'s collapsed strip so the progressive blur's ramp can be
- * sized to exactly that strip.
- */
-private val TopicToolbarCollapsedHeight = 64.dp
 
 /**
  * The topic photo's aspect ratio, used to size its box.
@@ -307,7 +321,18 @@ private fun TopicToolbar(
     backdrop: LayerBackdrop? = null,
     onBack: () -> Unit = {},
 ) {
-    val topAppBarColors = TiebaLiteTheme.topAppBarColors
+    // 有 backdrop 时由渐进模糊层供底，栏自身两个状态色都必须透明：只改 containerColor 的
+    // 话，收起交叠（overlappedFraction > 0.01）会切到不透明的 scrolledContainerColor（默认
+    // surfaceContainer）整层画出，把模糊盖住——不透明主题下话题栏会变实心（同 TopAppBar
+    // 包装与 ForumPage 的分支写法）
+    val topAppBarColors = if (backdrop != null) {
+        MaterialTheme.colorScheme.createTopAppBarColors(
+            containerColor = Color.Transparent,
+            scrolledContainerColor = Color.Transparent,
+        )
+    } else {
+        TiebaLiteTheme.topAppBarColors
+    }
 
     Box(
         modifier = modifier,
@@ -316,27 +341,12 @@ private fun TopicToolbar(
         // NOT painted here any more — it is the feed's first item (`TopicHeroImage`), which puts
         // the photo and the list in the same captured layer so the blur can actually sample it.
         //
-        // The band height is the COLLAPSED strip (`statusBar inset + 64.dp` row), not the 180.dp
-        // expanded height: `ProgressiveBlur`'s ramp is a fraction of its layer's height, so a
-        // 180.dp layer would leave the whole visible collapsed strip inside the ramp's saturated
-        // head and the gradient would never be visible. Sizing it to the collapsed strip keeps the
-        // ramp travelling the same physical distance at every point of the collapse.
-        val blurBandHeight = with(LocalDensity.current) {
-            WindowInsets.statusBars.getTop(this).toDp() + TopicToolbarCollapsedHeight
-        }
-        MiuixProgressiveBlurBar(
+        // 平台模糊 + 竖向渐变遮罩的渐进近似，替代 miuix-blur 的 progressiveTextureBlur：
+        // 后者在部分 Adreno 设备上页面重建（从帖子返回）后整条 RenderEffect 链静默不画，
+        // 而平台 BlurEffect（kyant 液态玻璃同路线）在同样场景存活。blurProgress 语义不变：
+        // 模糊层透明度，随栏收起从 0 渐入到 1。
+        PlatformProgressiveBlurBar(
             backdrop = backdrop,
-            bandHeight = blurBandHeight,
-            // `blurProgress` is the ALPHA of the blur layer: 0f leaves the backdrop untouched, 1f
-            // is fully blurred, so it has to ramp *up* with the collapse.
-            //
-            // The curve that used to sit here was `1f - (collapsedFraction * 3f)` — the fade-OUT
-            // `CollapsingTopAppBar` applies to its own expanded content (its `extra` layout node).
-            // Reusing it inverted the effect: the blur was strongest while the bar was still fully
-            // open and fell to zero exactly when the bar becomes the 64.dp strip that needs it,
-            // which is why no progressive blur was ever visible while scrolling up. For a
-            // collapsing bar the monotonic signal is `collapsedFraction`; `ForumPage` uses the same
-            // one for its collapsing bar.
             blurProgress = { scrollBehavior?.state?.collapsedFraction?.coerceIn(0f, 1f) ?: 0f },
         ) {
             CollapsingTopAppBar(
@@ -366,9 +376,7 @@ private fun TopicToolbar(
                     BackNavigationIcon(onBackPressed = onBack)
                 },
                 expandedHeight = TopicToolbarExpandedHeight,
-                colors = topAppBarColors.copy(
-                    containerColor = topAppBarColors.containerColor.copy(0.01f) // 99% Transparent
-                ),
+                colors = topAppBarColors,
                 scrollBehavior = scrollBehavior,
                 collapsibleExtraContent = true,
             ) {

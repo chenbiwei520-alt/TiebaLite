@@ -122,7 +122,7 @@ fun HotPage(
                 modifier = modifier.fillMaxSize().testColumn(),
                 state = listState,
                 contentPadding = contentPadding,
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (topicList.isNotEmpty()) {
                     // One Miuix card for the whole 话题榜 block, sized like the feed cards below (the

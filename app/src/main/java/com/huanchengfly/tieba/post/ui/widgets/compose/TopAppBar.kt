@@ -201,13 +201,7 @@ fun TopAppBar(
     } else {
         colors
     }
-    // The bar is `statusBar inset + TopAppBarExpandedHeight` tall; size the blur ramp to match so
-    // the clear end lands on the bar's bottom edge instead of inside it. See `MiuixProgressiveBlurBar`.
-    val bandHeight = with(LocalDensity.current) {
-        WindowInsets.statusBars.getTop(this).toDp() + TopAppBarDefaults.TopAppBarExpandedHeight
-    }
-
-    MiuixProgressiveBlurBar(backdrop = backdrop, bandHeight = bandHeight) {
+    MiuixProgressiveBlurBar(backdrop = backdrop) {
         SingleRowTopAppBar(
             modifier = modifier,
             title = title,
@@ -322,15 +316,7 @@ fun TopAppBarPaged(
         Color.Transparent
     }
 
-    // The bar's resting height is `statusBar inset + MiuixTopBarRowHeight`, and this composable
-    // hosts a tab row inside that row. Give the blur ramp that full height so it is still at a
-    // useful strength where the tab pills sit and only reaches clear at the bar's bottom edge —
-    // with the default 64.dp strip the pills would float on an almost-clear background.
-    val bandHeight = with(LocalDensity.current) {
-        WindowInsets.statusBars.getTop(this).toDp() + MiuixTopBarRowHeight
-    }
-
-    MiuixProgressiveBlurBar(backdrop = backdrop, bandHeight = bandHeight) {
+    MiuixProgressiveBlurBar(backdrop = backdrop) {
         Column(
             modifier =
                 modifier

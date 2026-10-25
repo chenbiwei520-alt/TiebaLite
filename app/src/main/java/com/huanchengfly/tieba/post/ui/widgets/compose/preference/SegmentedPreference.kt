@@ -3,6 +3,8 @@ package com.huanchengfly.tieba.post.ui.widgets.compose.preference
 import androidx.annotation.StringRes
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.LocalTextStyle
@@ -24,6 +26,15 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 val PreferenceItemPaddingCompact = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
 
 val PreferenceItemPadding = PaddingValues(16.dp)
+
+/**
+ * 所有偏好行的统一最小行高 = 开关行的自然高度（MiuixSwitch 28dp + 上下 16dp 内边距）。
+ * 不设的话，带开关的行 60dp、纯标题行 56dp（BasicComponent 默认），两种行混排时节距忽大忽小。
+ */
+val PreferenceRowMinHeight = 60.dp
+
+/** 偏好行 leading icon 的固定槽宽：不依赖各图标矢量自己声明的固有尺寸。 */
+private val PreferenceIconSlot = 24.dp
 
 /**
  * Container colors of the Material `SegmentedListItem` rows still used by the list pages
@@ -114,7 +125,9 @@ fun SegmentedPreference(
     onClick: () -> Unit = {},
 ) {
     BasicComponent(
-        modifier = modifier.preferenceRowSurface(position, containerColor),
+        modifier = modifier
+            .heightIn(min = PreferenceRowMinHeight)
+            .preferenceRowSurface(position, containerColor),
         startAction = leadingIcon,
         endActions = { trailingContent?.invoke() },
         insideMargin = contentPadding,
@@ -193,6 +206,7 @@ fun SegmentedPreference(
                     imageVector = imageVector,
                     contentDescription = null,
                     tint = preferenceIconTint(enabled),
+                    modifier = Modifier.size(PreferenceIconSlot),
                 )
             }
         },
@@ -235,6 +249,7 @@ fun SegmentedPreference(
                     imageVector = imageVector,
                     contentDescription = null,
                     tint = preferenceIconTint(enabled),
+                    modifier = Modifier.size(PreferenceIconSlot),
                 )
             }
         },

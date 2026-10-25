@@ -66,7 +66,9 @@ fun SearchUserPage(
 
     StateScreen(
         isEmpty = uiState.isEmpty,
-        isLoading = uiState.isRefreshing,
+        // 刷新只驱动 PullToRefresh 指示器；仅"还没有任何结果的首载"才占满 loading 屏，
+        // 否则刷新已有结果时会整屏清掉（Miuix PullToRefresh：刷新期间保留内容）
+        isLoading = uiState.isRefreshing && uiState.isEmpty,
         error = uiState.error,
         onReload = viewModel::onRefresh,
         screenPadding = contentPadding,

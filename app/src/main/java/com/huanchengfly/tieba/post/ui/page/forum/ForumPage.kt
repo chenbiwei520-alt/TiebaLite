@@ -22,12 +22,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -43,7 +41,6 @@ import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.NonRestartableComposable
@@ -64,7 +61,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -94,9 +90,8 @@ import com.huanchengfly.tieba.post.theme.createTopAppBarColors
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.ForumAvatarSharedBoundsKey
 import com.huanchengfly.tieba.post.ui.ForumTitleSharedBoundsKey
-import com.huanchengfly.tieba.post.ui.miuix.MiuixProgressiveBlurBar
-import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
-import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.LocalLiquidGlassBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.PlatformProgressiveBlurBar
 import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixExitUntilCollapsedScrollBehavior
 import com.huanchengfly.tieba.post.ui.common.localSharedBounds
 import com.huanchengfly.tieba.post.ui.common.theme.compose.clickableNoIndication
@@ -320,36 +315,27 @@ fun ForumPage(
 
     // HyperOS progressive blur for the app bar, replacing the previous haze blur which applied a
     // flat blur to the whole bar instead of ramping it out towards the content.
-    val barBackdrop = rememberMiuixBarBackdrop()
-    val barColors = if (barBackdrop != null) {
-        // The blur layer supplies the bar background, so keep the bar itself transparent
-        MaterialTheme.colorScheme.createTopAppBarColors(
-            containerColor = Color.Transparent,
-            scrolledContainerColor = Color.Transparent,
-        )
-    } else {
-        TiebaLiteTheme.topAppBarColors
-    }
     val barBlurVisible = (listStates[pagerState.currentPage].canScrollBackward ||
             scrollBehavior.isOverlapping) && uiState.error == null
 
     MyScaffold(
         topBar = {
+            // 采样本页 Scaffold 的全屏 capture（topBar 槽内读取才拿得到）+ 平台模糊实现：
+            // miuix-blur 的 AGSL 链在部分 Adreno 设备上页面重建后在折叠顶栏上下文里静默不画。
+            val barBackdrop = LocalLiquidGlassBackdrop.current
+            val barColors = if (barBackdrop != null) {
+                // The blur layer supplies the bar background, so keep the bar itself transparent
+                MaterialTheme.colorScheme.createTopAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = Color.Transparent,
+                )
+            } else {
+                TiebaLiteTheme.topAppBarColors
+            }
             val onTitleClicked: () -> Unit = { navigator.navigateDebounced(ForumDetail(forumName)) }
 
-            // `CollapsingAvatarTopAppBar` keeps a `TopAppBarExpandedHeight` (64.dp) strip visible
-            // once collapsed, so the blur ramp is sized to `statusBar inset + 64.dp` rather than the
-            // full expanded height. `ProgressiveBlur`'s ramp is proportional to its layer's height;
-            // a full-height layer would push the ramp's clear end behind the forum avatar header and
-            // leave the visible strip sitting in the saturated head of the gradient, which reads as
-            // "no progressive blur at all". Sizing it to the resting strip keeps the ramp travelling
-            // the same physical distance at every point of the collapse.
-            val blurBandHeight = with(LocalDensity.current) {
-                WindowInsets.statusBars.getTop(this).toDp() + TopAppBarDefaults.TopAppBarExpandedHeight
-            }
-            MiuixProgressiveBlurBar(
+            PlatformProgressiveBlurBar(
                 backdrop = barBackdrop,
-                bandHeight = blurBandHeight,
                 blurProgress = {
                     // Blur ramps in as the header collapses and the list moves under the bar
                     if (barBlurVisible) scrollBehavior.state.collapsedFraction.coerceIn(0f, 1f) else 0f
@@ -481,8 +467,6 @@ fun ForumPage(
         StateScreen(
             modifier = Modifier
                 .fillMaxSize()
-                // Feed the progressive blur behind the app bar
-                .miuixLayerBackdrop(barBackdrop)
                 .nestedScroll(connection = scrollOrientationConnection)
                 .nestedScroll(connection = scrollBehavior.nestedScrollConnection),
             isLoading = forumData == null,

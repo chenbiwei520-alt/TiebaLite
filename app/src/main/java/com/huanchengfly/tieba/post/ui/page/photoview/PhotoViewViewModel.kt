@@ -45,6 +45,24 @@ class PhotoViewViewModel : ViewModel() {
 
     private var data: LoadPicPageData? = null
 
+    /**
+     * 卡片已知图片的 picId → 地址表。接口返回的同一张图常是另一档 CDN 地址（
+     * [com.huanchengfly.tieba.post.api.models.bestQualitySrc] 的 waterUrl/bigCdnSrc 与卡片
+     * originUrl 是不同字符串、同一文件）。看图页的内存缓存命中、Pager 页 key、收拢槽位
+     * 查找全部按 URL 字符串：列表换代时若把正在显示的那张换成接口地址，重建后的新页缓存
+     * 必 miss——空白一帧再淡入（「打开图片闪一下」），收拢也找不到卡片槽（slot MISSING）。
+     * 同 picId 一律沿用卡片地址即可让 URL 跨换代稳定。
+     * */
+    private var cardUrlByPicId: Map<String, String> = emptyMap()
+
+    private fun stabilizeUrls(items: List<PhotoViewItem>): List<PhotoViewItem> {
+        if (cardUrlByPicId.isEmpty()) return items
+        return items.map { item ->
+            val cardUrl = cardUrlByPicId[item.picId] ?: return@map item
+            if (cardUrl != item.originUrl) item.copy(originUrl = cardUrl) else item
+        }
+    }
+
     private var initialized = false
 
     @Volatile
@@ -64,6 +82,7 @@ class PhotoViewViewModel : ViewModel() {
         if (initialized) return
         initialized = true
         this.data = viewData.data
+        cardUrlByPicId = viewData.picItems.associate { it.picId to it.originUrl }
 
         if (viewData.data == null) {
             _state.set {
@@ -97,7 +116,7 @@ class PhotoViewViewModel : ViewModel() {
                             overallIndex = firstItemIndex - (viewData.data.picIndex - 1 - index),
                         )
                     }
-                val items = localItems + fetchedItems
+                val items = stabilizeUrls(localItems + fetchedItems)
                 val hasNext = items.last().overallIndex < picAmount
                 val hasPrev = items.first().overallIndex > 1
                 val initialIndex: Int? = items
@@ -159,7 +178,7 @@ class PhotoViewViewModel : ViewModel() {
                 withContext(Dispatchers.Main.immediate) {
                     _state.set {
                         copy(
-                            data = (data + uniqueItems).toImmutableList(),
+                            data = (data + stabilizeUrls(uniqueItems)).toImmutableList(),
                             hasNext = hasNext,
                             totalAmount = picAmount,
                         )
@@ -194,7 +213,7 @@ class PhotoViewViewModel : ViewModel() {
                     } else {
                         _state.set {
                             copy(
-                                data = (uniqueItems + data).toImmutableList(),
+                                data = (stabilizeUrls(uniqueItems) + data).toImmutableList(),
                                 hasPrev = hasPrev,
                             )
                         }

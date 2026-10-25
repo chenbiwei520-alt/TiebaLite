@@ -170,7 +170,7 @@ fun ForumThreadList(
                     top = ForumListTopSpacing,
                     end = 16.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 isLoading = uiState.isLoadingMore,
                 onLoad = viewModel::loadMore,
                 onLazyLoad = viewModel::loadMore.takeIf { uiState.hasMore },

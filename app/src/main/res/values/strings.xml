@@ -600,6 +600,7 @@
     <string name="theme_dialog_saving">应用主题中</string>
     <string name="theme_btn_color_picker">拾色器</string>
     <string name="theme_title_color_picker">自定义主题颜色</string>
+    <string name="color_picker_invalid_color">颜色值无效，应为 #RRGGBB 十六进制格式</string>
     <string name="theme_tab_featured">精选</string>
     <string name="theme_tab_custom">定制</string>
     <string name="toast_connecting">连接中请稍候..</string>

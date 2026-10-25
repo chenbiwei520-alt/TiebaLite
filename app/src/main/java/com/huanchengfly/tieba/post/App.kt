@@ -23,6 +23,7 @@ import com.huanchengfly.tieba.post.components.ConfigInitializer
 import com.huanchengfly.tieba.post.components.coil.TbImageLoaderFactory
 import com.huanchengfly.tieba.post.di.RepositoryEntryPoint
 import com.huanchengfly.tieba.post.repository.user.SettingsRepository
+import com.huanchengfly.tieba.post.ui.miuix.ShaderBlurProbe
 import com.huanchengfly.tieba.post.utils.EmoticonManager
 import com.huanchengfly.tieba.post.ui.models.settings.DarkPreference
 import com.huanchengfly.tieba.post.utils.ImageCacheUtil
@@ -92,6 +93,9 @@ class App : Application(), Configuration.Provider {
         // 不必先打开日志页再回来重来一遍。
         TiebaLog.start()
         configInit.init()
+        // 首帧前同步读出 AGSL 渲染能力判定（未探测过则后台跑一次探针）：驱动编译不了 AGSL 的
+        // 设备直接走平面顶栏，避免模糊在页面间来回切换时凭空消失。
+        ShaderBlurProbe.warmUp(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             if (processName != null && packageName != processName) { //判断不等于默认进程名称
                 WebView.setDataDirectorySuffix(processName)

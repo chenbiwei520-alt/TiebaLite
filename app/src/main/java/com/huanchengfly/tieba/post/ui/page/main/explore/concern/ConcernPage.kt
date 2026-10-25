@@ -82,7 +82,7 @@ fun ConcernPage(
                 modifier = modifier.fillMaxSize(),
                 state = listState,
                 contentPadding = contentPadding,
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 isLoading = isLoadingMore,
                 onLazyLoad = viewModel::onLoadMore.takeIf { uiState.hasMore },
                 bottomIndicator = defaultBottomIndicator,

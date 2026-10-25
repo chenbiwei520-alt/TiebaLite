@@ -23,7 +23,6 @@ import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.VerticalAlignTop
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,7 +67,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -76,7 +74,11 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.theme.LikeRed
+import top.yukonga.miuix.kmp.basic.Button as MiuixButton
+import top.yukonga.miuix.kmp.basic.ButtonDefaults as MiuixButtonDefaults
 import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
+import top.yukonga.miuix.kmp.basic.Text as MiuixText
+import top.yukonga.miuix.kmp.basic.TextButton as MiuixTextButton
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.theme.MiuixTheme
@@ -91,14 +93,6 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 internal fun ButtonColors.containerColor(enabled: Boolean): Color =
     if (enabled) containerColor else disabledContainerColor
 
-/**
- * Represents the content color for this button, depending on [enabled].
- *
- * @param enabled whether the button is enabled
- */
-@Stable
-internal fun ButtonColors.contentColor(enabled: Boolean): Color =
-    if (enabled) contentColor else disabledContentColor
 
 @NonRestartableComposable
 @Composable
@@ -106,10 +100,11 @@ fun NegativeButton(
     modifier: Modifier = Modifier,
     text: String,
     onClick: () -> Unit
-) =
-    TextButton(onClick = onClick, modifier = modifier) {
-        Text(text = text, fontWeight = FontWeight.Bold)
-    }
+) = MiuixTextButton(
+    text = text,
+    onClick = onClick,
+    modifier = modifier,
+)
 
 @NonRestartableComposable
 @Composable
@@ -117,36 +112,38 @@ fun PositiveButton(
     @StringRes textRes: Int,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colors: ButtonColors = ButtonDefaults.buttonColors(),
     onClick: () -> Unit
-) =
-    Button(
-        onClick = onClick,
-        shapes = ButtonDefaults.shapes(),
-        modifier = modifier,
-        enabled = enabled,
-        colors = colors
-    ) {
-        Text(text = stringResource(textRes), fontWeight = FontWeight.Bold)
-    }
+) = MiuixButton(
+    onClick = onClick,
+    modifier = modifier,
+    enabled = enabled,
+    colors = MiuixButtonDefaults.buttonColorsPrimary(),
+) {
+    MiuixText(
+        text = stringResource(textRes),
+        color = MiuixTheme.colorScheme.onPrimary,
+        style = MiuixTheme.textStyles.button,
+    )
+}
 
 @Composable
 fun PositiveButton(
     text: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colors: ButtonColors = ButtonDefaults.buttonColors(),
     onClick: () -> Unit
-) =
-    Button(
-        onClick = onClick,
-        shapes = ButtonDefaults.shapes(),
-        modifier = modifier,
-        enabled = enabled,
-        colors = colors
-    ) {
-        Text(text = text, fontWeight = FontWeight.Bold)
-    }
+) = MiuixButton(
+    onClick = onClick,
+    modifier = modifier,
+    enabled = enabled,
+    colors = MiuixButtonDefaults.buttonColorsPrimary(),
+) {
+    MiuixText(
+        text = text,
+        color = MiuixTheme.colorScheme.onPrimary,
+        style = MiuixTheme.textStyles.button,
+    )
+}
 
 @Composable
 fun FavoriteButton(

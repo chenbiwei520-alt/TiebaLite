@@ -1,6 +1,7 @@
 package com.huanchengfly.tieba.post.utils
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
 import com.huanchengfly.tieba.post.utils.FileUtil.createFileInCacheDir
 import com.huanchengfly.tieba.post.utils.FileUtil.ensureParents
@@ -29,6 +30,13 @@ object TiebaLog {
     /** 崩溃落盘时只留尾部，免得写文件太慢把系统卡死。 */
     private const val CrashTailLines = 1500
 
+    /** 采集意外中断后的自动重启上限与退避基数：扛过系统侧的瞬时限制，又不无限刷屏。 */
+    private const val MaxRestarts = 5
+    private const val RestartBackoffMillis = 1_000L
+
+    /** 一条 logcat 连接存活超过这个时长，重启计数清零（长连接断开按新故障算）。 */
+    private const val HealthySessionMillis = 60_000L
+
     private val lock = Any()
 
     private val buffer = ArrayDeque<String>()
@@ -39,35 +47,62 @@ object TiebaLog {
     @Volatile
     private var readerThread: Thread? = null
 
+    /** 采集会话代号：stop()/start() 换代后，旧线程靠它自行退场，不会和新线程双读。 */
+    @Volatile
+    private var generation = 0
+
     @Volatile
     var isRecording: Boolean = false
         private set
 
-    /** 幂等：已经在读就直接返回，重复调用不会起第二个 logcat。 */
+    /** 幂等：已经在读就直接返回；暂停状态下调用会接管旧线程的收尾并重新开始。 */
     fun start() {
-        if (readerThread?.isAlive == true) return
+        if (isRecording && readerThread?.isAlive == true) return
         isRecording = true
+        generation++
+        val myGeneration = generation
         val thread = Thread({
-            var process: Process? = null
-            try {
-                process = ProcessBuilder("logcat", "-v", "threadtime")
-                    .redirectErrorStream(true)
-                    .start()
-                reader = process
-                process.inputStream.bufferedReader().useLines { lines ->
-                    lines.forEach { line -> append(line) }
-                }
-                append("[${LOG_TAG}] logcat 已退出")
-            } catch (t: Throwable) {
-                append("[${LOG_TAG}] 无法读取 logcat：${t.message}")
-            } finally {
-                // 只有「当前这一条」读线程退出时才清标记：stop() 之后马上 start() 时，
-                // 旧线程的收尾不能把新线程的记录状态改成暂停。
-                if (readerThread === Thread.currentThread()) {
-                    isRecording = false
+            var restarts = 0
+            while (isRecording && myGeneration == generation) {
+                val sessionStart = SystemClock.elapsedRealtime()
+                var process: Process? = null
+                try {
+                    process = ProcessBuilder("logcat", "-v", "threadtime")
+                        .redirectErrorStream(true)
+                        .start()
+                    reader = process
+                    append("[${LOG_TAG}] logcat 采集已启动" + if (restarts > 0) "（第 ${restarts + 1} 次）" else "")
+                    process.inputStream.bufferedReader().useLines { lines ->
+                        lines.forEach { line -> append(line) }
+                    }
+                    append("[${LOG_TAG}] logcat 输出结束")
+                } catch (t: Throwable) {
+                    // 手动 stop() 用 destroy 打断阻塞读也会走到这里，那时不算故障
+                    if (isRecording && myGeneration == generation) {
+                        TiebaLog.e(LOG_TAG, "读取 logcat 中断", t)
+                    }
+                } finally {
+                    runCatching { process?.destroy() }
                     reader = null
                 }
-                runCatching { process?.destroy() }
+                if (!isRecording || myGeneration != generation) break
+                // 存活得够久说明不是顽固故障，重启计数重新计
+                if (SystemClock.elapsedRealtime() - sessionStart >= HealthySessionMillis) restarts = 0
+                restarts++
+                if (restarts > MaxRestarts) {
+                    append("[${LOG_TAG}] 采集连续失败 $MaxRestarts 次，停止自动重启；回到「运行日志」页会重新开始")
+                    break
+                }
+                try {
+                    Thread.sleep(RestartBackoffMillis * restarts)
+                } catch (_: InterruptedException) {
+                    break
+                }
+            }
+            // 只有"当前会话"的线程退出时才收标记：stop() 之后马上 start() 时，
+            // 旧线程的收尾不能把新会话的记录状态改成暂停
+            if (readerThread === Thread.currentThread() && myGeneration == generation) {
+                isRecording = false
             }
         }, "TiebaLog-Reader")
         thread.isDaemon = true
@@ -77,10 +112,13 @@ object TiebaLog {
     }
 
     fun stop() {
+        isRecording = false
         val process = reader
         reader = null
-        isRecording = false
         runCatching { process?.destroy() }
+        // 唤醒可能在退避 sleep 里的旧线程，让它立刻退场
+        readerThread?.interrupt()
+        append("[${LOG_TAG}] 已暂停采集")
     }
 
     fun clear() {
