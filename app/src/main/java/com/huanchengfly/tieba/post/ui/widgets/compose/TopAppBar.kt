@@ -190,6 +190,7 @@ fun TopAppBar(
     colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
     scrollBehavior: MiuixScrollBehaviorState? = null,
     backdrop: LayerBackdrop? = null,
+    blurBandHeight: Dp? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     // With a backdrop the bar itself goes transparent so the progressive blur behind it shows
@@ -201,7 +202,7 @@ fun TopAppBar(
     } else {
         colors
     }
-    MiuixProgressiveBlurBar(backdrop = backdrop) {
+    MiuixProgressiveBlurBar(backdrop = backdrop, blurBandHeight = blurBandHeight) {
         SingleRowTopAppBar(
             modifier = modifier,
             title = title,
@@ -424,6 +425,7 @@ fun CenterAlignedTopAppBar(
     colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
     scrollBehavior: MiuixScrollBehaviorState? = null,
     backdrop: LayerBackdrop? = null,
+    blurBandHeight: Dp? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) =
     TopAppBar(
@@ -436,6 +438,7 @@ fun CenterAlignedTopAppBar(
         colors = colors,
         scrollBehavior = scrollBehavior,
         backdrop = backdrop,
+        blurBandHeight = blurBandHeight,
     )
 
 
@@ -449,6 +452,7 @@ fun CenterAlignedTopAppBar(
     colors: TopAppBarColors = TiebaLiteTheme.topAppBarColors,
     scrollBehavior: MiuixScrollBehaviorState? = null,
     backdrop: LayerBackdrop? = null,
+    blurBandHeight: Dp? = null,
     content: (@Composable ColumnScope.() -> Unit)? = null
 ) =
     TopAppBar(
@@ -462,6 +466,7 @@ fun CenterAlignedTopAppBar(
         colors = colors,
         scrollBehavior = scrollBehavior,
         backdrop = backdrop,
+        blurBandHeight = blurBandHeight,
         content = content
     )
 

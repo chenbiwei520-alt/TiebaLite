@@ -5,22 +5,27 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.huanchengfly.tieba.post.utils.DisplayUtil.GESTURE_3BUTTON
 import com.huanchengfly.tieba.post.utils.DisplayUtil.GESTURE_DEFAULT
 import com.huanchengfly.tieba.post.utils.DisplayUtil.gestureType
 import com.huanchengfly.tieba.post.utils.ThemeUtil
+import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixTopBarRowHeight
 import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.ScrollBehavior
 import top.yukonga.miuix.kmp.basic.rememberTopAppBarState as rememberMiuixTopAppBarState
@@ -149,6 +154,23 @@ fun ProvideRecordingBackdrop(
 private val BlurFadeInDistance = 48.dp
 
 /**
+ * 单行顶栏（动态页同款）的渐进模糊条带高度：状态栏内缩 + [MiuixTopBarRowHeight]。
+ *
+ * 状态栏高度必须取 [android.view.View.getRootWindowInsets]（窗口级、不受 Compose insets
+ * 消费链影响）：`WindowInsets.statusBars` 在 Scaffold 的 topBar 槽内读出来可能已被上游
+ * 消费成 0，条带会矮一截。
+ */
+@Composable
+fun MiuixTopBarBlurBandHeight(): Dp {
+    val density = LocalDensity.current
+    val statusBarTop = LocalView.current.rootWindowInsets?.let {
+        @Suppress("DEPRECATION")
+        it.systemWindowInsetTop
+    } ?: 0
+    return with(density) { statusBarTop.toDp() } + MiuixTopBarRowHeight
+}
+
+/**
  * Scaffold 全屏捕获的渐进模糊 backdrop：在 topBar 槽内读取 [LocalLiquidGlassBackdrop]，
  * 并按 AGSL 探针结论（[ShaderBlurProbe]）门控——不可渲染时返回 null，调用方走平面栏。
  *
@@ -183,6 +205,9 @@ fun rememberMiuixScaffoldBackdrop(): LayerBackdrop? {
  * @param scrollBehavior Miuix scroll behavior; the blur fades in with the bar's scroll offset.
  * @param blurProgress explicit blur strength in `0f..1f`, taking precedence over [scrollBehavior].
  *   Use it for hosts whose fade curve differs from the `contentOffset` ramp.
+ * @param blurBandHeight 可选的条带高度钳制。null（默认）＝铺满宿主栏（规范形态，动态页/
+ *   吧页等高或整栏）；当栏带有 content 槽额外内容（帖子页吸顶的 ThreadHeader 会把栏撑高）
+ *   又希望模糊带与单行动态页等高时，传 [MiuixTopBarBlurBandHeight]。
  * @param content the bar content, drawn on top of the blur layer.
  */
 @Composable
@@ -190,16 +215,24 @@ fun MiuixProgressiveBlurBar(
     backdrop: LayerBackdrop?,
     scrollBehavior: ScrollBehavior? = null,
     blurProgress: (() -> Float)? = null,
+    blurBandHeight: Dp? = null,
     content: @Composable () -> Unit,
 ) {
     Box(modifier = Modifier) {
         if (backdrop != null) {
             val fadeInDistance = with(LocalDensity.current) { BlurFadeInDistance.toPx() }
+            val blurLayerModifier = if (blurBandHeight != null) {
+                Modifier
+                    .fillMaxWidth()
+                    .height(blurBandHeight)
+                    .align(Alignment.TopStart)
+            } else {
+                Modifier.matchParentSize()
+            }
             // `graphicsLayer` sits OUTSIDE `progressiveTextureBlur`: updating alpha invalidates
             // only the compositing step while the shader output stays cached by the draw node.
             Box(
-                modifier = Modifier
-                    .matchParentSize()
+                modifier = blurLayerModifier
                     .graphicsLayer {
                         val progress = blurProgress?.invoke()
                             ?: scrollBehavior?.state

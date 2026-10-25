@@ -99,6 +99,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultToggleFloatingActio
 import com.huanchengfly.tieba.post.ui.widgets.compose.Avatar
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
 import com.huanchengfly.tieba.post.ui.miuix.miuixLayerBackdrop
+import com.huanchengfly.tieba.post.ui.miuix.MiuixTopBarBlurBandHeight
 import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixBarBackdrop
 import com.huanchengfly.tieba.post.ui.widgets.compose.CenterAlignedTopAppBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
@@ -378,7 +379,9 @@ fun ThreadPage(
                         }
                     },
                     scrollBehavior = topAppBarScrollBehavior,
-                    backdrop = barBackdrop
+                    backdrop = barBackdrop,
+                    // 吸顶的 ThreadHeader 会把栏撑高；模糊带钳制回单行栏高度，与动态页等高
+                    blurBandHeight = MiuixTopBarBlurBandHeight()
                 ) {
                     if (useStickyHeaderWorkaround && state.thread?.replyNum != null) {
                         Container {
