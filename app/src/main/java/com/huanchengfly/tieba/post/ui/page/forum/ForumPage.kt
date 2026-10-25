@@ -90,8 +90,8 @@ import com.huanchengfly.tieba.post.theme.createTopAppBarColors
 import com.huanchengfly.tieba.post.toastShort
 import com.huanchengfly.tieba.post.ui.ForumAvatarSharedBoundsKey
 import com.huanchengfly.tieba.post.ui.ForumTitleSharedBoundsKey
-import com.huanchengfly.tieba.post.ui.miuix.LocalLiquidGlassBackdrop
-import com.huanchengfly.tieba.post.ui.miuix.PlatformProgressiveBlurBar
+import com.huanchengfly.tieba.post.ui.miuix.MiuixProgressiveBlurBar
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixScaffoldBackdrop
 import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixExitUntilCollapsedScrollBehavior
 import com.huanchengfly.tieba.post.ui.common.localSharedBounds
 import com.huanchengfly.tieba.post.ui.common.theme.compose.clickableNoIndication
@@ -320,9 +320,9 @@ fun ForumPage(
 
     MyScaffold(
         topBar = {
-            // 采样本页 Scaffold 的全屏 capture（topBar 槽内读取才拿得到）+ 平台模糊实现：
-            // miuix-blur 的 AGSL 链在部分 Adreno 设备上页面重建后在折叠顶栏上下文里静默不画。
-            val barBackdrop = LocalLiquidGlassBackdrop.current
+            // 与动态页同款：miuix-blur 的 progressiveTextureBlur + Scaffold 全屏捕获（topBar
+            // 槽内读取才拿得到），并经 AGSL 探针门控——不可渲染设备走平面栏。
+            val barBackdrop = rememberMiuixScaffoldBackdrop()
             val barColors = if (barBackdrop != null) {
                 // The blur layer supplies the bar background, so keep the bar itself transparent
                 MaterialTheme.colorScheme.createTopAppBarColors(
@@ -334,7 +334,7 @@ fun ForumPage(
             }
             val onTitleClicked: () -> Unit = { navigator.navigateDebounced(ForumDetail(forumName)) }
 
-            PlatformProgressiveBlurBar(
+            MiuixProgressiveBlurBar(
                 backdrop = barBackdrop,
                 blurProgress = {
                     // Blur ramps in as the header collapses and the list moves under the bar

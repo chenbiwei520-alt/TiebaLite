@@ -72,8 +72,8 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadBlockedTip
 import com.huanchengfly.tieba.post.ui.page.thread.ThreadLikeUiEvent
 import com.huanchengfly.tieba.post.ui.utils.rememberScrollOrientationConnection
 import com.huanchengfly.tieba.post.ui.widgets.compose.BackNavigationIcon
-import com.huanchengfly.tieba.post.ui.miuix.LocalLiquidGlassBackdrop
-import com.huanchengfly.tieba.post.ui.miuix.PlatformProgressiveBlurBar
+import com.huanchengfly.tieba.post.ui.miuix.MiuixProgressiveBlurBar
+import com.huanchengfly.tieba.post.ui.miuix.rememberMiuixScaffoldBackdrop
 import com.huanchengfly.tieba.post.ui.widgets.compose.CollapsingTopAppBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
@@ -150,7 +150,7 @@ fun TopicDetailPage(
             topBar = {
                 // 采样本页 Scaffold 的全屏 capture，必须在 topBar 槽内读取——MyScaffold 只在
                 // Miuix Scaffold 周围提供这个 CompositionLocal，页面主体里读到的永远是 null。
-                val glassBackdrop = LocalLiquidGlassBackdrop.current
+                val glassBackdrop = rememberMiuixScaffoldBackdrop()
                 topicInfo?.let { info ->
                     TopicToolbar(
                         topicInfo = info,
@@ -341,11 +341,10 @@ private fun TopicToolbar(
         // NOT painted here any more — it is the feed's first item (`TopicHeroImage`), which puts
         // the photo and the list in the same captured layer so the blur can actually sample it.
         //
-        // 平台模糊 + 竖向渐变遮罩的渐进近似，替代 miuix-blur 的 progressiveTextureBlur：
-        // 后者在部分 Adreno 设备上页面重建（从帖子返回）后整条 RenderEffect 链静默不画，
-        // 而平台 BlurEffect（kyant 液态玻璃同路线）在同样场景存活。blurProgress 语义不变：
-        // 模糊层透明度，随栏收起从 0 渐入到 1。
-        PlatformProgressiveBlurBar(
+        // 与动态页同款：miuix-blur 的 progressiveTextureBlur（真 AGSL 渐进模糊），backdrop
+        // 采 Scaffold 全屏捕获并经 AGSL 探针门控。blurProgress 语义：模糊层透明度，随栏
+        // 收起从 0 渐入到 1。
+        MiuixProgressiveBlurBar(
             backdrop = backdrop,
             blurProgress = { scrollBehavior?.state?.collapsedFraction?.coerceIn(0f, 1f) ?: 0f },
         ) {
