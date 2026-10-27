@@ -8,7 +8,6 @@
     <br/>
     <br/>
     <p>极简的贴吧<strong>第三方</strong>客户端 · HyperOS 风格重构版</p>
-    <img src="assets/Screenshots.png" alt="Screenshots" />
 </div>
 
 ## 关于本分支

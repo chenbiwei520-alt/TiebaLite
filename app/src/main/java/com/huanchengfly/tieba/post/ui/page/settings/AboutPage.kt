@@ -68,7 +68,7 @@ import androidx.compose.ui.graphics.BlendMode as ComposeBlendMode
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Info
 
-private const val URL_PROJECT_GITHUB = "https://github.com/0ranko0P/TiebaLite"
+private const val URL_PROJECT_GITHUB = "https://github.com/chenbiwei520-alt/TiebaLite/tree/miuix"
 
 @Composable
 fun AboutPage(
