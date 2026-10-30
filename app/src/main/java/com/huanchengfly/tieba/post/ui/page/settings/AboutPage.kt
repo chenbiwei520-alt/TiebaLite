@@ -427,7 +427,7 @@ private fun logoBlendEntries(isDark: Boolean): List<BlendColorEntry> = if (isDar
 private const val AboutCardBlurRadius = 60f
 
 @Composable
-fun AboutPage(onBack: () -> Unit) {
+fun AboutPage(onBack: () -> Unit, paneMode: Boolean = false) {
     val context = LocalContext.current
     val disclaimerDialogState = rememberDialogState()
 
@@ -437,6 +437,7 @@ fun AboutPage(onBack: () -> Unit) {
 
     AboutPage(
         onBackClicked = onBack,
+        paneMode = paneMode,
         onDisclaimerClicked = disclaimerDialogState::show,
         onHomePageClicked = { launchCustomTab(URL_PROJECT_GITHUB) },
         onLicenseClicked = { launchCustomTab("${URL_PROJECT_GITHUB}/blob/main/LICENSE") },

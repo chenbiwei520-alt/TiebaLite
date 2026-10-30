@@ -356,7 +356,7 @@ fun TabletSettingsScreen(
                                 onOpenWorkInfo = { selected = TabletSettingsDest.WorkInfo },
                             )
 
-                            TabletSettingsDest.About -> AboutPage(onBackClicked = onBack)
+                            TabletSettingsDest.About -> AboutPage(onBack = onBack, paneMode = true)
                         }
                     }
                 }
