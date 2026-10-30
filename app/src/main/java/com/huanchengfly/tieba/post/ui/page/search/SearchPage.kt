@@ -85,6 +85,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.SortMenuButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.preference.Options
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberPagerListStates
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberPagerStaggeredGridStates
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberSnackbarHostState
 import kotlin.math.abs
 import kotlinx.collections.immutable.persistentMapOf
@@ -142,6 +143,8 @@ fun SearchPage(
     val pages: List<SearchPages> = SearchPages.entries
     val pagerState = rememberPagerState(0) { pages.size }
     val listStates = rememberPagerListStates(pages.size)
+    // Only the 搜贴 tab is a thread feed; 搜吧 / 搜用户 stay plain lists.
+    val gridStates = rememberPagerStaggeredGridStates(pages.size)
     // Pinned semantics: the bar never scrolls away, the pager content moves underneath it.
     // Miuix expresses this through `canScroll = { false }`; there is no separate pinned factory.
     val scrollBehaviors = rememberTopAppBarScrollBehaviors(pages.size) { state ->
@@ -150,7 +153,11 @@ fun SearchPage(
 
     fun resetCurrentListState() {
         coroutineScope.launch {
-            listStates[pagerState.currentPage].scrollToItem(0)
+            if (pages[pagerState.currentPage] == SearchPages.Thread) {
+                gridStates[pagerState.currentPage].scrollToItem(0)
+            } else {
+                listStates[pagerState.currentPage].scrollToItem(0)
+            }
             scrollBehaviors.fastForEach { b -> b.state.contentOffset = 0f } // reset all scroll behavior
         }
     }
@@ -161,11 +168,12 @@ fun SearchPage(
                 // attach ScrollBehavior connection
                 val modifier = Modifier.nestedScroll(scrollBehaviors[page.ordinal].nestedScrollConnection)
                 val listState = listStates[page.ordinal]
+                val gridState = gridStates[page.ordinal]
                 when(page) {
                     SearchPages.Forum -> SearchForumPage(modifier, keyword, contentPadding, listState)
 
                     SearchPages.Thread -> {
-                        SearchThreadPage(modifier, keyword, threadSortType, contentPadding, listState)
+                        SearchThreadPage(modifier, keyword, threadSortType, contentPadding, gridState)
                     }
 
                     SearchPages.User -> SearchUserPage(modifier, keyword, contentPadding, listState)

@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.listSaver
@@ -95,6 +96,12 @@ suspend fun LazyListState?.scrollToTop(scrollBehavior: ScrollBehavior?) {
     this?.scrollToItem(0, 0)
 }
 
+suspend fun LazyStaggeredGridState?.scrollToTop(scrollBehavior: ScrollBehavior?) {
+    scrollBehavior?.state?.contentOffset = 0f
+    scrollBehavior?.state?.heightOffset = 0f
+    this?.scrollToItem(0, 0)
+}
+
 /**
  * Creates a list of [LazyListState] that is remembered across compositions.
  *
@@ -107,6 +114,28 @@ fun rememberPagerListStates(size: Int): List<LazyListState> {
         MutableList(size) { LazyListState() }
     }
 }
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@Composable
+fun rememberPagerStaggeredGridStates(size: Int): List<LazyStaggeredGridState> {
+    return rememberSaveable(size, saver = StaggeredGridStatesSaver) {
+        MutableList(size) { LazyStaggeredGridState() }
+    }
+}
+
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+private val StaggeredGridStatesSaver: Saver<List<LazyStaggeredGridState>, *> = listSaver(
+    save = {
+        it.map { state ->
+            packInts(state.firstVisibleItemIndex, state.firstVisibleItemScrollOffset)
+        }
+    },
+    restore = { packedStates ->
+        packedStates.map { packed ->
+            LazyStaggeredGridState(unpackInt1(packed), unpackInt2(packed))
+        }
+    }
+)
 
 private val Saver: Saver<List<LazyListState>, *> = listSaver(
     save = {

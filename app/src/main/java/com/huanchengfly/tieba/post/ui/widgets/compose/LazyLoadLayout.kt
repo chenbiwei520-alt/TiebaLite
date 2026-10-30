@@ -15,6 +15,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridScope
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -147,6 +153,91 @@ fun SwipeUpLazyLoadColumn(
                 val onThreshold by remember { derivedStateOf { refreshState.progress >= 1.0f } }
                 // Loading feedback itself lives in the list item above (the Miuix ring), so this
                 // overlay only carries the pull/hint state — one indicator at a time.
+                if (!isLoading) {
+                    bottomIndicator(onThreshold)
+                }
+            }
+
+            LaunchedEffect(size) { // set indicator's height as threshold
+                if (size == null) return@LaunchedEffect
+                refreshState.setThreshold(size.height.toFloat())
+            }
+        }
+    }
+}
+
+/**
+ * Staggered-grid counterpart of [SwipeUpLazyLoadColumn]: same swipe-up refresh and bottom
+ * indicator, but items flow into [columns] columns of independent height. With
+ * [StaggeredGridCells.Adaptive] a phone in portrait stays single-column, while landscape and
+ * tablet windows automatically get a waterfall.
+ */
+@Composable
+fun SwipeUpLazyLoadStaggeredGrid(
+    modifier: Modifier = Modifier,
+    state: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
+    columns: StaggeredGridCells = StaggeredGridCells.Adaptive(400.dp),
+    contentPadding: PaddingValues = PaddingValues.Zero,
+    verticalItemSpacing: Dp = 16.dp,
+    horizontalArrangement: Arrangement.Horizontal = Arrangement.spacedBy(16.dp),
+    isLoading: Boolean,
+    onLoad: (() -> Unit)? = null,
+    onLazyLoad: (() -> Unit)? = null,
+    bottomIndicator: @Composable BoxScope.(onThreshold: Boolean) -> Unit,
+    items: LazyStaggeredGridScope.() -> Unit
+) {
+    val refreshState = rememberSwipeUpRefreshConnection(isLoading, onLoad)
+
+    Box(
+        modifier = Modifier.clipToBounds().nestedScroll(refreshState) then modifier
+    ) {
+        LazyVerticalStaggeredGrid(
+            columns = columns,
+            modifier = Modifier
+                .matchParentSize()
+                .graphicsLayer {
+                    this.translationY = refreshState.position
+                },
+            state = state,
+            contentPadding = contentPadding,
+            verticalItemSpacing = verticalItemSpacing,
+            horizontalArrangement = horizontalArrangement,
+        ) {
+            items()
+
+            if (onLazyLoad != null) {
+                item(
+                    key = LoadMoreContentType,
+                    contentType = LoadMoreContentType,
+                    span = StaggeredGridItemSpan.FullLine,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .onVisibilityChanged(minDurationMs = 300) { visible ->
+                                if (visible && !isLoading && state.layoutInfo.visibleItemsInfo.size > 1) onLazyLoad()
+                            }
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        MiuixLoadingIndicator(modifier = Modifier.size(24.dp))
+                    }
+                }
+            }
+        }
+
+        OneTimeMeasurer(
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) { size ->
+            Box(
+                modifier = Modifier
+                    .indicatorOffset(
+                        bottomPadding = contentPadding.calculateBottomPadding(),
+                        connection = refreshState
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                val onThreshold by remember { derivedStateOf { refreshState.progress >= 1.0f } }
                 if (!isLoading) {
                     bottomIndicator(onThreshold)
                 }

@@ -6,9 +6,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,7 +43,7 @@ import com.huanchengfly.tieba.post.ui.page.main.explore.createThreadClickListene
 import com.huanchengfly.tieba.post.ui.page.thread.ThreadLikeUiEvent
 import com.huanchengfly.tieba.post.ui.page.user.thread.UserThreadViewModel.Companion.UserThreadVmFactory
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
-import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadStaggeredGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadContentType
 import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadMedia
 import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeader
@@ -55,7 +56,7 @@ import top.yukonga.miuix.kmp.basic.Card
 fun UserThreadPage(
     uid: Long,
     fluid: Boolean = false,
-    lazyListState: LazyListState = rememberLazyListState(),
+    gridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
     viewModel: UserThreadViewModel = hiltViewModel<UserThreadViewModel, UserThreadVmFactory> { it.create(uid) },
 ) {
@@ -99,12 +100,14 @@ fun UserThreadPage(
             val data = uiState.data
             val hasMore = uiState.hasMore
 
-            SwipeUpLazyLoadColumn(
+            SwipeUpLazyLoadStaggeredGrid(
                 modifier = Modifier.fillMaxSize(),
-                state = lazyListState,
-                // Card grid: 16dp side margins + the list's 12dp rhythm, same as the forum tabs.
+                state = gridState,
+                columns = StaggeredGridCells.Adaptive(400.dp),
+                // Card grid: 16dp side margins + the list's 16dp rhythm, same as the forum tabs.
                 contentPadding = contentPadding + PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalItemSpacing = 16.dp,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 isLoading = isLoadingMore,
                 onLazyLoad = viewModel::onLoadMore.takeIf { hasMore },
                 bottomIndicator = defaultBottomIndicator,

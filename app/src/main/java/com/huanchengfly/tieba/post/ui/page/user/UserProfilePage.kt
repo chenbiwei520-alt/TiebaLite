@@ -139,6 +139,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.placeholder
 import com.huanchengfly.tieba.post.ui.widgets.compose.preference.SegmentedPreference
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberPagerListStates
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberPagerStaggeredGridStates
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberSnackbarHostState
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.DefaultLoadingScreen
 import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixTabRow
@@ -274,13 +275,16 @@ fun UserProfilePage(
         }
         val pagerState = rememberPagerState(initialPage = initialPage) { tabs.size }
         val lazyListStates = rememberPagerListStates(tabs.size)
+        // 帖子/回贴 are thread feeds and run on staggered grids; 关注吧 stays a plain list.
+        val lazyGridStates = rememberPagerStaggeredGridStates(tabs.size)
         val pagerContents: List<@Composable (Boolean, PaddingValues) -> Unit> = tabs.mapIndexed { i, (tab, _) ->
             { fluid: Boolean, contentPadding: PaddingValues ->
                 val lazyListState = lazyListStates[i]
+                val lazyGridState = lazyGridStates[i]
                 when (tab) {
-                    Tab.THREADS -> UserThreadPage(uid, fluid, lazyListState, contentPadding)
+                    Tab.THREADS -> UserThreadPage(uid, fluid, lazyGridState, contentPadding)
 
-                    Tab.POSTS -> UserPostPage(uid, fluid, lazyListState, contentPadding)
+                    Tab.POSTS -> UserPostPage(uid, fluid, lazyGridState, contentPadding)
 
                     Tab.FORUMS -> when {
                         !isSelf && userProfile.privateForum -> UserPageHide(hiddenTab = tab)

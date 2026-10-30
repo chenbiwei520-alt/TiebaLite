@@ -11,9 +11,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -54,7 +55,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadBlockedTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.StrongBox
-import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadStaggeredGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadContentType
 import com.huanchengfly.tieba.post.ui.widgets.compose.defaultBottomIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
@@ -66,7 +67,7 @@ import kotlinx.coroutines.launch
 fun PersonalizedPage(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues,
-    listState: LazyListState = rememberLazyListState(),
+    gridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
     navigator: NavController,
     onHideFab: (Boolean) -> Unit,
     viewModel: PersonalizedViewModel = hiltViewModel(),
@@ -78,7 +79,7 @@ fun PersonalizedPage(
     viewModel.uiEvent.collectUiEventWithLifecycle {
         when (it) {
             is PersonalizedUiEvent.RefreshSuccess -> coroutineScope.launch {
-                listState.scrollToItem(0, 0)
+                gridState.scrollToItem(0, 0)
                 refreshCount = it.count // Show refresh tip
                 delay(2000)
                 refreshCount = 0        // Hide refresh tip
@@ -114,7 +115,7 @@ fun PersonalizedPage(
     )
     val isError = error != null
 
-    LaunchedFabStateEffect(listState, onHideFab, isRefreshing, isError)
+    LaunchedFabStateEffect(gridState, onHideFab, isRefreshing, isError)
 
     StateScreen(
         isEmpty = isEmpty,
@@ -135,11 +136,15 @@ fun PersonalizedPage(
             val isLoadingMore = uiState.isLoadingMore
             val itemPlacementSpec = MaterialTheme.motionScheme.slowSpatialSpec<IntOffset>()
 
-            SwipeUpLazyLoadColumn(
+            SwipeUpLazyLoadStaggeredGrid(
                 modifier = modifier.fillMaxSize().testColumn(),
-                state = listState,
+                state = gridState,
+                // Adaptive: one column on phones, a multi-column waterfall on tablets and wider
+                // windows.
+                columns = StaggeredGridCells.Adaptive(400.dp),
                 contentPadding = contentPadding,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalItemSpacing = 16.dp,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 isLoading = isLoadingMore,
                 onLazyLoad = viewModel::onLoadMore.takeUnless { isRefreshing },
                 bottomIndicator = defaultBottomIndicator,

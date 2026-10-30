@@ -6,7 +6,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,7 +51,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.LocalSnackbarHostState
 import com.huanchengfly.tieba.post.ui.widgets.compose.LongClickMenu
 import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshBox
-import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadStaggeredGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBarPaged
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 
@@ -161,12 +162,14 @@ fun ThreadStorePage(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = contentPadding,
             ) {
-                SwipeUpLazyLoadColumn(
+                SwipeUpLazyLoadStaggeredGrid(
                     modifier = Modifier.fillMaxSize().miuixLayerBackdrop(barBackdrop),
                     // Match the feed pages (ConcernPage / ForumThreadListPage / TopicDetailPage):
-                    // 16dp horizontal gutter off the screen edge and 20dp between cards.
+                    // 16dp horizontal gutter off the screen edge and 16dp between cards.
+                    columns = StaggeredGridCells.Adaptive(400.dp),
                     contentPadding = contentPadding + PaddingValues(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalItemSpacing = 16.dp,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
                     isLoading = isLoadingMore,
                     onLoad = viewModel::onLoadMore,
                     onLazyLoad = viewModel::onLoadMore.takeIf { hasMore },

@@ -7,10 +7,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridScope
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,7 +23,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.huanchengfly.tieba.post.LocalWindowAdaptiveInfo
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.protos.OriginThreadInfo
 import com.huanchengfly.tieba.post.arch.collectCommonUiEventWithLifecycle
@@ -45,7 +49,7 @@ import top.yukonga.miuix.kmp.squircle.squircleBackground
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreIndicator
-import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadStaggeredGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadBlockedTip
 import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadContentType
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
@@ -108,7 +112,7 @@ fun ForumThreadList(
     initialSortType: Int,
     forumRuleTitle: String?,
     contentPadding: PaddingValues,
-    listState: LazyListState = rememberLazyListState(),
+    gridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
     viewModel: ForumThreadListViewModel = hiltViewModel<ForumThreadListViewModel, ForumVMFactory>(
         key = Objects.hash(forumId, forumName, type).toString()
     ) {
@@ -158,11 +162,14 @@ fun ForumThreadList(
     ) {
         val hideBlocked by viewModel.hideBlocked.collectAsStateWithLifecycle()
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+        val isWideWindow = LocalWindowAdaptiveInfo.current.windowSizeClass
+            .isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
 
-        Container {
-            SwipeUpLazyLoadColumn(
+        Container(fluid = isWideWindow) {
+            SwipeUpLazyLoadStaggeredGrid(
                 modifier = modifier.fillMaxSize(),
-                state = listState,
+                state = gridState,
+                columns = StaggeredGridCells.Adaptive(400.dp),
                 // The scaffold padding only accounts for the top bar's height, so without this extra
                 // top inset the first card butts straight up against the tab row.
                 contentPadding = contentPadding + PaddingValues(
@@ -170,7 +177,8 @@ fun ForumThreadList(
                     top = ForumListTopSpacing,
                     end = 16.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalItemSpacing = 16.dp,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 isLoading = uiState.isLoadingMore,
                 onLoad = viewModel::loadMore,
                 onLazyLoad = viewModel::loadMore.takeIf { uiState.hasMore },
@@ -180,7 +188,7 @@ fun ForumThreadList(
             ) {
                 forumRuleTitle?.let { rule ->
                     if (rule.isEmpty()) return@let
-                    item(key = "ForumRule") {
+                    item(key = "ForumRule", span = StaggeredGridItemSpan.FullLine) {
                         // Same Miuix group card as the feed items below
                         Card(modifier = Modifier.fillMaxWidth()) {
                             TopThreadItem(
@@ -207,14 +215,27 @@ fun ForumThreadList(
     }
 }
 
-fun LazyListScope.forumThreadList(
+fun LazyStaggeredGridScope.forumThreadList(
     threads: List<ThreadItem>,
     threadClickListeners: ThreadClickListeners,
     onLikeClicked: (ThreadItem) -> Unit,
     onOriginThreadClicked: (OriginThreadInfo) -> Unit = {},
     hideBlocked: Boolean = false,
 ) {
-    itemsIndexed(threads, key = { _, it -> it.id }, ThreadContentType) { _, thread ->
+    itemsIndexed(
+        items = threads,
+        key = { _, it -> it.id },
+        contentType = ThreadContentType,
+        // Pinned threads and the forum rule keep the old single-column look: full-width compact
+        // rows above the waterfall instead of narrow cards inside the lanes.
+        span = { _, thread ->
+            if (thread.isTop) {
+                StaggeredGridItemSpan.FullLine
+            } else {
+                StaggeredGridItemSpan.SingleLane
+            }
+        },
+    ) { _, thread ->
         // Top threads are non-blockable
         if (thread.isTop) {
             // Same Miuix group card as the feed items below, so pinned threads read as part of the

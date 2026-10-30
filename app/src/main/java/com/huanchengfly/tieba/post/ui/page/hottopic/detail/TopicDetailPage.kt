@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -51,7 +53,9 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
+import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import coil3.compose.AsyncImage
+import com.huanchengfly.tieba.post.LocalWindowAdaptiveInfo
 import com.huanchengfly.tieba.post.R
 import com.huanchengfly.tieba.post.api.models.TopicInfoBean
 import com.huanchengfly.tieba.post.arch.CommonUiEvent
@@ -87,7 +91,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.DefaultBackToTopFAB
 import top.yukonga.miuix.kmp.basic.Card
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshBox
-import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadStaggeredGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.defaultBottomIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import com.huanchengfly.tieba.post.utils.StringUtil.getShortNumString
@@ -101,15 +105,17 @@ fun TopicDetailPage(
     navigator: NavController,
     viewModel: TopicDetailViewModel = hiltViewModel<TopicDetailViewModel>()
 ) {
-    val lazyListState = rememberLazyListState()
+    val gridState = rememberLazyStaggeredGridState()
     val coroutineScope = rememberCoroutineScope()
+    val isWideWindow = LocalWindowAdaptiveInfo.current.windowSizeClass
+        .isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     viewModel.uiEvent.collectUiEventWithLifecycle {
         when (it) {
             is TopicDetailUiEvent.RefreshSuccess -> coroutineScope.launch {
-                lazyListState.scrollToItem(0, 0)
+                gridState.scrollToItem(0, 0)
             }
 
             is ThreadLikeUiEvent -> toastShort(it.toMessage(context = this))
@@ -162,11 +168,11 @@ fun TopicDetailPage(
             },
             floatingActionButton = {
                 val fabVisible by remember {
-                    derivedStateOf { lazyListState.canScrollBackward && scrollOrientationConnection.isScrollingForward }
+                    derivedStateOf { gridState.canScrollBackward && scrollOrientationConnection.isScrollingForward }
                 }
                 DefaultBackToTopFAB(visible = fabVisible) {
                     coroutineScope.launch {
-                        lazyListState.animateScrollToItem(0)
+                        gridState.animateScrollToItem(0)
                         // Miuix semantics: a negative contentOffset means the bar is scrolled away.
                         // Resetting it to 0 puts the bar back to its expanded resting position.
                         scrollBehavior.state.contentOffset = 0f
@@ -194,8 +200,8 @@ fun TopicDetailPage(
             val feedPadding = PaddingValues(
                 top = contentPadding.calculateTopPadding(),
                 bottom = contentPadding.calculateBottomPadding(),
-                start = contentPadding.calculateStartPadding(layoutDirection),
-                end = contentPadding.calculateEndPadding(layoutDirection),
+                start = contentPadding.calculateStartPadding(layoutDirection) + 16.dp,
+                end = contentPadding.calculateEndPadding(layoutDirection) + 16.dp,
             )
             // Resolved out here because `LazyListScope`'s DSL is not a composable scope: theme and
             // density reads are not allowed inside `items { }`.
@@ -211,16 +217,19 @@ fun TopicDetailPage(
                 contentPadding = contentPadding,
             ) {
                 Container (
+                    fluid = isWideWindow,
                     modifier = Modifier
                         .nestedScroll(connection = scrollOrientationConnection)
                         .nestedScroll(scrollBehavior.nestedScrollConnection)
                 ) {
                     ProvideNavigator(navigator) {
-                        SwipeUpLazyLoadColumn(
+                        SwipeUpLazyLoadStaggeredGrid(
                             modifier = Modifier.fillMaxSize(),
-                            state = lazyListState,
+                            state = gridState,
+                            columns = StaggeredGridCells.Adaptive(400.dp),
                             contentPadding = feedPadding,
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalItemSpacing = 16.dp,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                             isLoading = uiState.isLoadingMore,
                             onLazyLoad = viewModel::onLoadMore.takeIf { uiState.hasMore },
                             bottomIndicator = defaultBottomIndicator,
@@ -230,7 +239,7 @@ fun TopicDetailPage(
                             // inside the captured layer, so it is blurred by the bar exactly like the
                             // rest of the feed while it slides underneath.
                             if (showHero) {
-                                item(key = "topic-hero") {
+                                item(key = "topic-hero", span = StaggeredGridItemSpan.FullLine) {
                                     TopicHeroImage(imageUrl = heroImageUrl)
                                 }
                             }
@@ -242,7 +251,7 @@ fun TopicDetailPage(
                                 BlockableContent(
                                     blocked = item.blocked,
                                     blockedTip = { ThreadBlockedTip() },
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     hideBlockedContent = hideBlockedContent
                                 ) {
                                     // One Miuix group card per feed item, no divider lines

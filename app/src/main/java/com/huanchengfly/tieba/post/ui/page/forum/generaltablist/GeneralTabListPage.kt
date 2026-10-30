@@ -4,16 +4,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.huanchengfly.tieba.post.LocalWindowAdaptiveInfo
 import com.huanchengfly.tieba.post.api.models.protos.FrsTabInfo
 import com.huanchengfly.tieba.post.arch.collectPartialAsState
 import com.huanchengfly.tieba.post.plus
@@ -29,7 +33,7 @@ import com.huanchengfly.tieba.post.ui.page.main.explore.ThreadClickListeners
 import com.huanchengfly.tieba.post.ui.widgets.compose.Chip
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
 import com.huanchengfly.tieba.post.ui.widgets.compose.LoadMoreIndicator
-import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadStaggeredGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 import kotlinx.collections.immutable.persistentListOf
 import java.util.Objects
@@ -43,7 +47,7 @@ fun GeneralTabListPage(
     threadClickListeners: ThreadClickListeners,
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues = PaddingValues.Zero,
-    listState: LazyListState = rememberLazyListState(),
+    gridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
     viewModel: GeneralTabListViewModel = hiltViewModel<GeneralTabListViewModel, GeneralTabListVMFactory>(
         key = Objects.hash(forumId, forumName, navTabInfo.tabId).toString()
     ) {
@@ -83,20 +87,24 @@ fun GeneralTabListPage(
     ) {
         val hideBlocked by viewModel.hideBlocked.collectAsStateWithLifecycle()
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+        val isWideWindow = LocalWindowAdaptiveInfo.current.windowSizeClass
+            .isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
 
-        Container {
-            SwipeUpLazyLoadColumn(
+        Container(fluid = isWideWindow) {
+            SwipeUpLazyLoadStaggeredGrid(
                 modifier = modifier.fillMaxSize(),
-                state = listState,
+                state = gridState,
+                columns = StaggeredGridCells.Adaptive(400.dp),
                 // Same card grid metrics as the 最新/精华 tab: 16dp side margins, a top inset so the
-                // first card clears the tab row, and 20dp between cards. Those three were missing
+                // first card clears the tab row, and 16dp between cards. Those three were missing
                 // here, which is why every custom tab's cards hugged the screen edge and each other.
                 contentPadding = contentPadding + PaddingValues(
                     start = 16.dp,
                     top = ForumListTopSpacing,
                     end = 16.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalItemSpacing = 16.dp,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 isLoading = uiState.isLoadingMore,
                 onLoad = viewModel::loadMore,
                 onLazyLoad = viewModel::loadMore.takeIf { uiState.hasMore },
@@ -105,7 +113,7 @@ fun GeneralTabListPage(
                 }
             ) {
                 if (navTabInfo.sub_tab_list.isNotEmpty()) {
-                    item {
+                    item(span = StaggeredGridItemSpan.FullLine) {
                         LazyRow(
                             modifier = Modifier.padding(vertical = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),

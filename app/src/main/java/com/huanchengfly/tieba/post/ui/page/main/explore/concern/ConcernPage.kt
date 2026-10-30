@@ -4,9 +4,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -24,7 +25,7 @@ import com.huanchengfly.tieba.post.ui.page.main.explore.LaunchedFabStateEffect
 import com.huanchengfly.tieba.post.ui.page.main.explore.createThreadClickListeners
 import com.huanchengfly.tieba.post.ui.widgets.compose.FeedCard
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshBox
-import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadStaggeredGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.ThreadContentType
 import com.huanchengfly.tieba.post.ui.widgets.compose.defaultBottomIndicator
 import top.yukonga.miuix.kmp.basic.Card
@@ -34,7 +35,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 fun ConcernPage(
     modifier: Modifier = Modifier,
     contentPadding: PaddingValues,
-    listState: LazyListState = rememberLazyListState(),
+    gridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
     navigator: NavController,
     onHideFab: (Boolean) -> Unit,
     viewModel: ConcernViewModel = hiltViewModel(),
@@ -54,7 +55,7 @@ fun ConcernPage(
 
     viewModel.uiEvent.collectCommonUiEventWithLifecycle()
 
-    LaunchedFabStateEffect(listState, onHideFab, isRefreshing, isError = error != null)
+    LaunchedFabStateEffect(gridState, onHideFab, isRefreshing, isError = error != null)
 
     val threadClickListeners = remember(navigator) {
         createThreadClickListeners(onNavigate = navigator::navigateDebounced)
@@ -78,11 +79,13 @@ fun ConcernPage(
             val isLoadingMore = uiState.isLoadingMore
             val data = uiState.data
 
-            SwipeUpLazyLoadColumn(
+            SwipeUpLazyLoadStaggeredGrid(
                 modifier = modifier.fillMaxSize(),
-                state = listState,
+                state = gridState,
+                columns = StaggeredGridCells.Adaptive(400.dp),
                 contentPadding = contentPadding,
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalItemSpacing = 16.dp,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 isLoading = isLoadingMore,
                 onLazyLoad = viewModel::onLoadMore.takeIf { uiState.hasMore },
                 bottomIndicator = defaultBottomIndicator,

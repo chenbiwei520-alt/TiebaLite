@@ -8,9 +8,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,7 +36,7 @@ import com.huanchengfly.tieba.post.ui.page.Destination.Thread
 import com.huanchengfly.tieba.post.ui.page.LocalNavController
 import com.huanchengfly.tieba.post.ui.page.user.post.UserPostViewModel.Companion.UserPostVmFactory
 import com.huanchengfly.tieba.post.ui.widgets.compose.Container
-import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadStaggeredGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.UserHeader
 import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.squircle.squircleClip
@@ -46,7 +47,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
 fun UserPostPage(
     uid: Long,
     fluid: Boolean = false,
-    lazyListState: LazyListState = rememberLazyListState(),
+    gridState: LazyStaggeredGridState = rememberLazyStaggeredGridState(),
     contentPadding: PaddingValues = PaddingValues(0.dp),
     viewModel: UserPostViewModel = hiltViewModel<UserPostViewModel, UserPostVmFactory> { it.create(uid) },
 ) {
@@ -97,15 +98,17 @@ fun UserPostPage(
             val data = uiState.data
             val hasMore = uiState.hasMore
 
-            SwipeUpLazyLoadColumn(
+            SwipeUpLazyLoadStaggeredGrid(
                 modifier = Modifier.fillMaxSize(),
-                state = lazyListState,
+                state = gridState,
+                columns = StaggeredGridCells.Adaptive(400.dp),
                 contentPadding = contentPadding + PaddingValues(
                     start = 16.dp,
                     top = 12.dp,
                     end = 16.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalItemSpacing = 16.dp,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 isLoading = isLoadingMore,
                 onLazyLoad = viewModel::onLoadMore.takeIf { hasMore },
                 bottomIndicator = defaultBottomIndicator,

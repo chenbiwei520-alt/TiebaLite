@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -1010,18 +1011,23 @@ inline fun <reified T: MainDestination> OnMainNavigationScrollTopEvent(
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     topAppBarState: TopAppBarState? = null,
     gridState: LazyGridState? = null,
+    crossinline staggeredGridState: () -> LazyStaggeredGridState? = { null },
     crossinline listState: () -> LazyListState?,
 ) {
     val context = LocalContext.current
     onGlobalEvent<GlobalEvent.ScrollToTop>(coroutineScope, filter = { it.tag is T }) {
         val listState = listState()
-        if (listState?.canScrollBackward == true || gridState?.canScrollBackward == true) {
+        val staggeredState = staggeredGridState()
+        if (listState?.canScrollBackward == true || gridState?.canScrollBackward == true ||
+            staggeredState?.canScrollBackward == true
+        ) {
             context.vibrateOneShot(milliseconds = 50)
             coroutineScope.launch {
                 listState?.run {
                     if (firstVisibleItemIndex > 5) scrollToItem(0) else animateScrollToItem(0)
                 }
                 gridState?.animateScrollToItem(0)
+                staggeredState?.animateScrollToItem(0)
             }
         }
         // Reset TopAppBarState

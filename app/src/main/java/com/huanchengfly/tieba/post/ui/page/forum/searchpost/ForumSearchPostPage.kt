@@ -13,7 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material3.Icon
@@ -67,7 +68,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.PullToRefreshBox
 import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixSearchTopBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.SearchThreadItem
-import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadColumn
+import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeUpLazyLoadStaggeredGrid
 import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBar
 import com.huanchengfly.tieba.post.ui.widgets.compose.defaultBottomIndicator
 import com.huanchengfly.tieba.post.ui.widgets.compose.preference.Options
@@ -218,12 +219,14 @@ fun ForumSearchPostPage(
                     contentPadding = contentPadding
                 ) {
                     ProvideNavigator(navigator = navigator) {
-                        SwipeUpLazyLoadColumn(
+                        SwipeUpLazyLoadStaggeredGrid(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .nestedScroll(scrollBehavior.nestedScrollConnection),
+                            columns = StaggeredGridCells.Adaptive(400.dp),
                             contentPadding = contentPadding + PaddingValues(horizontal = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalItemSpacing = 16.dp,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                             isLoading = isLoadingMore,
                             onLazyLoad = viewModel::onLoadMore.takeIf { hasMore },
                             bottomIndicator = defaultBottomIndicator

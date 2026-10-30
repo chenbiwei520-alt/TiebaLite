@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.staggeredgrid.LazyStaggeredGridState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
@@ -52,6 +53,8 @@ import com.huanchengfly.tieba.post.ui.page.Destination.HotTopicList
 import com.huanchengfly.tieba.post.ui.page.Destination.Search
 import com.huanchengfly.tieba.post.ui.page.LocalNavController
 import com.huanchengfly.tieba.post.ui.page.consumeResult
+import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
+import com.huanchengfly.tieba.post.LocalWindowAdaptiveInfo
 import com.huanchengfly.tieba.post.ui.page.main.MainDestination
 import com.huanchengfly.tieba.post.ui.page.main.MainNavigationSuiteType
 import com.huanchengfly.tieba.post.ui.page.main.MainNavigationSuiteType.Companion.isFloatingNavigationBar
@@ -73,6 +76,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.MyScaffold
 import com.huanchengfly.tieba.post.ui.widgets.compose.TopAppBarPaged
 import com.huanchengfly.tieba.post.ui.widgets.compose.MiuixTabRow
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberPagerListStates
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberPagerStaggeredGridStates
 import com.huanchengfly.tieba.post.ui.widgets.compose.staticTopBarHeight
 import com.huanchengfly.tieba.post.utils.BooleanBitSet
 import top.yukonga.miuix.kmp.icon.MiuixIcons
@@ -176,6 +180,23 @@ fun AnimatedVisibilityScope.ExplorePage(loggedIn: Boolean) {
     }
     val pagerState = rememberPagerState(initialPage = if (loggedIn) 1 else 0) { pages.size }
     val listStates = rememberPagerListStates(pages.size)
+    // The thread feeds are staggered grids so wide (landscape) windows get a waterfall; the
+    // hot-tab content is a mixed list (topic board + threads) and keeps the plain LazyColumn.
+    val gridStates = rememberPagerStaggeredGridStates(pages.size)
+
+    fun usesStaggeredGrid(page: ExplorePageItem) = page !== ExplorePageItem.Hot
+
+    fun currentPageCanScrollBackward(): Boolean {
+        val page = pages[pagerState.currentPage]
+        return if (usesStaggeredGrid(page)) gridStates[pagerState.currentPage].canScrollBackward
+        else listStates[pagerState.currentPage].canScrollBackward
+    }
+
+    fun currentPageIsScrollInProgress(): Boolean {
+        val page = pages[pagerState.currentPage]
+        return if (usesStaggeredGrid(page)) gridStates[pagerState.currentPage].isScrollInProgress
+        else listStates[pagerState.currentPage].isScrollInProgress
+    }
 
     val scrollOrientationConnection = rememberScrollOrientationConnection()
     val scrollBehavior = rememberMiuixEnterAlwaysScrollBehavior()
@@ -191,11 +212,25 @@ fun AnimatedVisibilityScope.ExplorePage(loggedIn: Boolean) {
     OnMainNavigationScrollTopEvent<MainDestination.Explore>(
         coroutineScope = coroutineScope,
         topAppBarState = scrollBehavior.state,
-        listState = { listStates.getOrNull(pagerState.currentPage) }
+        staggeredGridState = {
+            if (pages.getOrNull(pagerState.currentPage) != ExplorePageItem.Hot) {
+                gridStates.getOrNull(pagerState.currentPage)
+            } else null
+        },
+        listState = {
+            if (pages.getOrNull(pagerState.currentPage) == ExplorePageItem.Hot) {
+                listStates.getOrNull(pagerState.currentPage)
+            } else null
+        }
     )
 
     // Feeds the liquid glass fill of the tab row's pills
     val tabBackdrop = rememberMiuixBarBackdrop()
+
+    // On phone portrait `Container` is a no-op; once the window is medium/expanded (landscape
+    // phone, tablet) the feed needs the full content width so the waterfall can fit two columns.
+    val isWideWindow = LocalWindowAdaptiveInfo.current.windowSizeClass
+        .isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
 
     MyScaffold(
         useMD2Layout = true,
@@ -235,7 +270,7 @@ fun AnimatedVisibilityScope.ExplorePage(loggedIn: Boolean) {
                 scrollBehavior = scrollBehavior,
                 canScrollBackward = { // No transition running && canScrollBackward
                     sharedTransitionScope?.isTransitionActive != true && !transition.isRunning &&
-                            listStates[pagerState.currentPage].canScrollBackward
+                            currentPageCanScrollBackward()
                 },
                 backdrop = tabBackdrop,
             )
@@ -248,7 +283,7 @@ fun AnimatedVisibilityScope.ExplorePage(loggedIn: Boolean) {
             val visible by remember {
                 derivedStateOf {
                     !transition.isRunning && scrollOrientationConnection.isScrollingForward &&
-                            !pagerState.isScrolling && !listStates[pagerState.currentPage].isScrollInProgress &&
+                            !pagerState.isScrolling && !currentPageIsScrollInProgress() &&
                             !fabHideStates[pagerState.currentPage]
                 }
             }
@@ -280,7 +315,7 @@ fun AnimatedVisibilityScope.ExplorePage(loggedIn: Boolean) {
         // smearing the column's edge colour across the side margins as flat slabs with hard
         // vertical seams.
         Box(modifier = Modifier.fillMaxWidth().miuixLayerBackdrop(tabBackdrop)) {
-            Container {
+            Container(fluid = isWideWindow) {
                 HorizontalPager(
                     state = pagerState,
                     key = { pages[it].title },
@@ -296,14 +331,15 @@ fun AnimatedVisibilityScope.ExplorePage(loggedIn: Boolean) {
                         fabHideStates = fabHideStates.set(index, hideFab)
                     }
                     val listState = listStates[index]
+                    val gridState = gridStates[index]
 
                     when (pages[index]) {
                         ExplorePageItem.Concern -> {
-                            ConcernPage(modifier, listContentPadding, listState, navigator, onHideFab)
+                            ConcernPage(modifier, listContentPadding, gridState, navigator, onHideFab)
                         }
 
                         ExplorePageItem.Personalized -> {
-                            PersonalizedPage(modifier, listContentPadding, listState, navigator, onHideFab)
+                            PersonalizedPage(modifier, listContentPadding, gridState, navigator, onHideFab)
                         }
 
                         ExplorePageItem.Hot -> {
@@ -342,6 +378,20 @@ fun LaunchedFabStateEffect(
     isError: Boolean
 ) {
     val noScrollBackward by remember { derivedStateOf { !listState.canScrollBackward } }
+
+    LaunchedEffect(noScrollBackward, onHideFab, isRefreshing, isError) {
+        onHideFab(noScrollBackward || isRefreshing || isError)
+    }
+}
+
+@Composable
+fun LaunchedFabStateEffect(
+    gridState: LazyStaggeredGridState,
+    onHideFab: (Boolean) -> Unit,
+    isRefreshing: Boolean,
+    isError: Boolean
+) {
+    val noScrollBackward by remember { derivedStateOf { !gridState.canScrollBackward } }
 
     LaunchedEffect(noScrollBackward, onHideFab, isRefreshing, isError) {
         onHideFab(noScrollBackward || isRefreshing || isError)

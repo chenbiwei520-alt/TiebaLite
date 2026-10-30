@@ -129,7 +129,7 @@ import com.huanchengfly.tieba.post.ui.widgets.compose.OutlinedIconTextButton
 import com.huanchengfly.tieba.post.ui.widgets.compose.SwipeToDismissSnackbarHost
 import com.huanchengfly.tieba.post.ui.widgets.compose.placeholder
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberDialogState
-import com.huanchengfly.tieba.post.ui.widgets.compose.rememberPagerListStates
+import com.huanchengfly.tieba.post.ui.widgets.compose.rememberPagerStaggeredGridStates
 import com.huanchengfly.tieba.post.ui.widgets.compose.rememberSnackbarHostState
 import com.huanchengfly.tieba.post.ui.widgets.compose.scrollToTop
 import com.huanchengfly.tieba.post.ui.widgets.compose.states.StateScreen
@@ -212,7 +212,9 @@ fun ForumPage(
     val defaultSortType = LocalHabitSettings.current.forumSortType
 
     val pagerState = rememberPagerState { forumTabs.size }
-    val listStates by rememberUpdatedState(rememberPagerListStates(pagerState.pageCount))
+    // Every forum tab is a thread feed, so the pager keeps staggered-grid states; landscape and
+    // tablet windows then get the multi-column waterfall like the main feed.
+    val gridStates by rememberUpdatedState(rememberPagerStaggeredGridStates(pagerState.pageCount))
     val scrollBehavior = rememberMiuixExitUntilCollapsedScrollBehavior()
     val scrollOrientationConnection = rememberScrollOrientationConnection()
 
@@ -248,7 +250,7 @@ fun ForumPage(
 
             is ForumUiEvent.ScrollToTop -> {
                 val index = forumTabs.indexOfFirst { tab -> tab.tabId == it.tabId}
-                listStates.getOrNull(index)?.scrollToTop(scrollBehavior)
+                gridStates.getOrNull(index)?.scrollToTop(scrollBehavior)
             }
 
             else -> it.toString()
@@ -292,7 +294,7 @@ fun ForumPage(
                     type = forumType,
                     contentPadding = contentPadding,
                     initialSortType = initialSortType,
-                    listState = listStates[forumType.ordinal]
+                    gridState = gridStates[forumType.ordinal]
                 )
             }
         }
@@ -315,7 +317,7 @@ fun ForumPage(
 
     // HyperOS progressive blur for the app bar, replacing the previous haze blur which applied a
     // flat blur to the whole bar instead of ramping it out towards the content.
-    val barBlurVisible = (listStates[pagerState.currentPage].canScrollBackward ||
+    val barBlurVisible = (gridStates[pagerState.currentPage].canScrollBackward ||
             scrollBehavior.isOverlapping) && uiState.error == null
 
     MyScaffold(
@@ -500,7 +502,7 @@ fun ForumPage(
                                 navTabInfo = currentTab,
                                 threadClickListeners = threadClickListeners,
                                 contentPadding = contentPadding,
-                                listState = listStates[page],
+                                gridState = gridStates[page],
                             )
                         }
                     }
